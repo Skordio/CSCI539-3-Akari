@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import simpledialog
 from argparse import ArgumentParser
 
-from maze import Cell, Maze
+from akari import Cell, Akari
 
 class MazeEditor:
     def __init__(self, master, load_from_file=None):

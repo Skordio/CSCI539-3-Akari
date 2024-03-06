@@ -1,4 +1,4 @@
-from maze import Maze
+from akari import Maze
 
 
 
