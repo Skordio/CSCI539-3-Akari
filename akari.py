@@ -6,6 +6,12 @@ import os
 import random, copy
 
 class Cell:
+    x: int
+    y: int
+    is_black: bool
+    number: int | None
+    highlight_rect: None
+    
     def __init__(self, x, y, is_black=False, number=None):
         self.x = x
         self.y = y
@@ -84,10 +90,10 @@ class Akari:
                 
                 firstFour = byte_str[:4]
                 
-                self.cells[(x, y)].walls['top'] = firstFour[0] == '1'
-                self.cells[(x, y)].walls['right'] = firstFour[1] == '1'
-                self.cells[(x, y)].walls['bottom'] = firstFour[2] == '1'
-                self.cells[(x, y)].walls['left'] = firstFour[3] == '1'
+                # self.cells[(x, y)].walls['top'] = firstFour[0] == '1'
+                # self.cells[(x, y)].walls['right'] = firstFour[1] == '1'
+                # self.cells[(x, y)].walls['bottom'] = firstFour[2] == '1'
+                # self.cells[(x, y)].walls['left'] = firstFour[3] == '1'
                 
                 lastFour = byte_str[4:]
                 cell_number = int(lastFour, base=2)

@@ -48,8 +48,8 @@ class AkariEditor:
         self.button_frame2 = tk.Frame(self.master)
         self.button_frame2.pack(side=tk.TOP, fill=tk.X, padx=20)
 
-        self.dfs_solve_button = tk.Button(self.button_frame2, text="Solve", command=self.solve)
-        self.dfs_solve_button.pack(side=tk.LEFT)
+        self.solve_button = tk.Button(self.button_frame2, text="Solve", command=self.solve)
+        self.solve_button.pack(side=tk.LEFT)
 
         self.remove_solution_button = tk.Button(self.button_frame2, text="Remove Solution", command=self.remove_solution)
         self.remove_solution_button.pack(side=tk.LEFT)
