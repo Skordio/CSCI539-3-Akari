@@ -26,6 +26,8 @@ class AkariEditor:
 
         self.canvas = tk.Canvas(self.frame)
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True, anchor=tk.CENTER)
+        
+        self.canvas.bind("<Button-1>", self.toggle_cell_color)
 
         # First row of buttons
         self.button_frame1 = tk.Frame(self.master)
@@ -147,6 +149,13 @@ class AkariEditor:
             self.canvas.delete("all")
             self.resize_master()
             self.draw_grid()
+            
+    def toggle_cell_color(self, event):
+        # i and j are coords for cell that was clicked
+        i, j = (event.x // self.cell_size, event.y // self.cell_size)
+        cell = self.akari.cells[(i, j)]
+        cell.is_black = not cell.is_black
+        self.redraw_all()
             
     def toggle_highlight(self, event):
         # i and j are coords for cell that was clicked
