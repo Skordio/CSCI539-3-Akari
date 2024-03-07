@@ -132,16 +132,15 @@ class AkariEditor:
 
     def draw_cell(self, i, j, x1, y1):
         x2, y2 = x1 + self.cell_size, y1 + self.cell_size
-        cell_id = self.canvas.create_rectangle(x1, y1, x2, y2, outline="light grey", tags=("cell", f"{i},{j}"))
-        self.akari.cells[(i, j)].id = cell_id
         cell = self.akari.cells[(i, j)]
-        if cell.is_start:
-            self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text="S", fill="green", font=('Arial', self.cell_size//2), tags=(f"{cell.coords()}-start"))
-        elif cell.is_end:
-            self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text="E", fill="red", font=('Arial', self.cell_size//2), tags=(f"{cell.coords()}-end"))
-        elif cell.number is not None:
-            self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text=str(cell.number), font=('Arial', self.cell_size//2), tags=(f"{cell.coords()}-number"))
-        self.update_cell_walls(i, j)
+        fill = 'white'
+        if cell.is_black:
+            fill = 'black'
+        cell_id = self.canvas.create_rectangle(x1, y1, x2, y2, outline="light grey", fill=fill, tags=("cell", f"{i},{j}"))
+        self.akari.cells[(i, j)].id = cell_id
+        if cell.number is not None:
+            self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text=str(cell.number), font=('Arial', self.cell_size//2), fill='white', tags=(f"{cell.coords()}-number"))
+        # self.update_cell_walls(i, j)
 
     def prompt_cell_size(self):
         size = simpledialog.askinteger("Input", "Enter cell size (default is 40, min is 20, max is 60):", parent=self.master, minvalue=20, maxvalue=60)
@@ -175,42 +174,42 @@ class AkariEditor:
         # self.canvas.bind("<Button-1>", self.toggle_wall)
         pass
 
-    def toggle_wall(self, event):
-        i, j = (event.x // self.cell_size, event.y // self.cell_size)
-        cell = self.akari.cells[(i, j)]
+    # def toggle_wall(self, event):
+    #     i, j = (event.x // self.cell_size, event.y // self.cell_size)
+    #     cell = self.akari.cells[(i, j)]
 
-        alsoUpdate = {'i':i, 'j':j}
+    #     alsoUpdate = {'i':i, 'j':j}
 
-        # Determine which wall to toggle based on the click position within the cell
-        x, y = event.x % self.cell_size, event.y % self.cell_size
-        if x < self.cell_size / 4 and i > 0:
-            cell.walls['left'] = not cell.walls['left']
-            if i > 0:
-                otherCell = self.akari.cells[(i-1, j)]
-                otherCell.walls['right'] = not otherCell.walls['right']
-                alsoUpdate['i'] = i-1
-        elif x > 3 * self.cell_size / 4 and i < self.akari.grid_size_x - 1:
-            cell.walls['right'] = not cell.walls['right']
-            if i < self.akari.grid_size_x - 1:
-                otherCell = self.akari.cells[(i+1, j)]
-                otherCell.walls['left'] = not otherCell.walls['left']
-                alsoUpdate['i'] = i+1
-        elif y < self.cell_size / 4 and j > 0:
-            cell.walls['top'] = not cell.walls['top']
-            if j > 0:
-                otherCell = self.akari.cells[(i, j-1)]
-                otherCell.walls['bottom'] = not otherCell.walls['bottom']
-                alsoUpdate['j'] = j-1
-        elif y > 3 * self.cell_size / 4 and j < self.akari.grid_size_y - 1:
-            cell.walls['bottom'] = not cell.walls['bottom']
-            if j < self.akari.grid_size_y - 1:
-                otherCell = self.akari.cells[(i, j+1)]
-                otherCell.walls['top'] = not otherCell.walls['top']
-                alsoUpdate['j'] = j+1
+    #     # Determine which wall to toggle based on the click position within the cell
+    #     x, y = event.x % self.cell_size, event.y % self.cell_size
+    #     if x < self.cell_size / 4 and i > 0:
+    #         cell.walls['left'] = not cell.walls['left']
+    #         if i > 0:
+    #             otherCell = self.akari.cells[(i-1, j)]
+    #             otherCell.walls['right'] = not otherCell.walls['right']
+    #             alsoUpdate['i'] = i-1
+    #     elif x > 3 * self.cell_size / 4 and i < self.akari.grid_size_x - 1:
+    #         cell.walls['right'] = not cell.walls['right']
+    #         if i < self.akari.grid_size_x - 1:
+    #             otherCell = self.akari.cells[(i+1, j)]
+    #             otherCell.walls['left'] = not otherCell.walls['left']
+    #             alsoUpdate['i'] = i+1
+    #     elif y < self.cell_size / 4 and j > 0:
+    #         cell.walls['top'] = not cell.walls['top']
+    #         if j > 0:
+    #             otherCell = self.akari.cells[(i, j-1)]
+    #             otherCell.walls['bottom'] = not otherCell.walls['bottom']
+    #             alsoUpdate['j'] = j-1
+    #     elif y > 3 * self.cell_size / 4 and j < self.akari.grid_size_y - 1:
+    #         cell.walls['bottom'] = not cell.walls['bottom']
+    #         if j < self.akari.grid_size_y - 1:
+    #             otherCell = self.akari.cells[(i, j+1)]
+    #             otherCell.walls['top'] = not otherCell.walls['top']
+    #             alsoUpdate['j'] = j+1
 
-        self.update_cell_walls(i, j)
-        if alsoUpdate['i'] != i or alsoUpdate['j'] != j:
-            self.update_cell_walls(alsoUpdate['i'], alsoUpdate['j'])
+    #     self.update_cell_walls(i, j)
+    #     if alsoUpdate['i'] != i or alsoUpdate['j'] != j:
+    #         self.update_cell_walls(alsoUpdate['i'], alsoUpdate['j'])
             
     def toggle_highlight(self, event):
         # i and j are coords for cell that was clicked

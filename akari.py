@@ -10,7 +10,6 @@ class Cell:
     y: int
     is_black: bool
     number: int | None
-    highlight_rect: None
     
     def __init__(self, x, y, is_black=False, number=None):
         self.x = x
