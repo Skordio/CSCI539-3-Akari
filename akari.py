@@ -11,11 +11,17 @@ class Cell:
     is_black: bool
     number: int | None
     
+    # these are for use with the GUI
+    highlight_rect: int | str | None
+    id: int | str | None
+    
     def __init__(self, x, y, is_black=False, number=None):
         self.x = x
         self.y = y
         self.is_black = False
         self.number = None
+        self.highlight_rect = None
+        self.id = None
 
 
     def __str__(self):
