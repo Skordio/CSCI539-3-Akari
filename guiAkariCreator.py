@@ -70,6 +70,9 @@ class AkariEditor:
         self.load_from_file_button.pack(side=tk.RIGHT)
         
         self.canvas.bind("<Button-3>", self.toggle_highlight)  # Right-click to highlight a cell
+        
+        for key in ('0', '1', '2', '3', '4'):
+            self.canvas.bind(key, self.place_number)
 
     def reset_grid(self):
         self.akari.reset_cells()
@@ -175,21 +178,18 @@ class AkariEditor:
 
             x1, y1 = i * self.cell_size, j * self.cell_size
             x2, y2 = x1 + self.cell_size, y1 + self.cell_size
-            self.highlighted_cell.highlight_rect = self.canvas.create_rectangle(x1, y1, x2, y2, outline="blue", width=2)
+            self.highlighted_cell.highlight_rect = self.canvas.create_rectangle(x1, y1, x2, y2, outline="cyan", width=2)
 
-    # def place_number(self):
-    #     if self.highlighted_cell:
-    #         if self.highlighted_cell.number is not None:
-    #             self.canvas.delete(f"{self.highlighted_cell.coords()}-number")
-    #             self.akari.remove_number(self.highlighted_cell.number)
-    #             self.highlighted_cell.number = None
-    #             self.redraw_all()
-    #         else:
-    #             number = simpledialog.askinteger("Input", "Enter cell number:", parent=self.master, minvalue=1, maxvalue=100)
-    #             if number is not None:
-    #                 self.highlighted_cell.number = number
-    #                 self.akari.add_number(number)
-    #         self.draw_grid()
+    def place_number(self, event):
+        print('place number')
+        number = int(event.char)
+        if self.highlighted_cell:
+            if number == 0:
+                self.canvas.delete(f"{self.highlighted_cell.coords()}-number")
+                self.highlighted_cell.number = None
+            else:
+                self.highlighted_cell.number = number
+            self.redraw_all()
         
     def find_cell_coordinates(self, cell):
         for i in range(self.akari.grid_size_x):

@@ -62,6 +62,8 @@ class Akari:
 
     # TODO: Fix this method for Akari instead of Maze
     def load_from_file(self, filename):
+        if not os.path.exists('puzzles'):
+            os.makedirs('puzzles')
         with open(os.path.join('puzzles', filename), 'rb') as maze_file:
             grid_size_x_byte = maze_file.read(1)
             grid_size_y_byte = maze_file.read(1)
@@ -100,6 +102,8 @@ class Akari:
 
     # TODO: Fix this method for Akari instead of Maze
     def save_to_file(self, filename):
+        if not os.path.exists('puzzles'):
+            os.makedirs('puzzles')
         with open(os.path.join('puzzles', filename), 'wb') as akari_file:
             akari_file.write(int(self.grid_size_x).to_bytes(1, 'big'))
             akari_file.write(int(self.grid_size_y).to_bytes(1, 'big'))
