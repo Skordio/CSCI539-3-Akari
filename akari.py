@@ -23,21 +23,27 @@ class Cell:
         self.highlight_rect = None
         self.id = None
 
-
     def __str__(self):
         return str(self.coords())
-    
     
     def __repr__(self):
         return self.__str__()
 
-
     def get_key(self):
         return self.coords()
     
-    
     def distance_to_cell(self, cell):
         return ((self.x - cell.x)**2 + (self.y - cell.y)**2)**0.5
+    
+    def num_adjacent_white_squares(self, akari):
+        count = 0
+        neighbors = [(self.x+1, self.y), (self.x-1, self.y), (self.x, self.y+1), (self.x, self.y-1)]
+        
+        for neighbor in neighbors:
+            if neighbor in akari.cells and not akari.cells[neighbor].is_black:
+                count += 1
+                
+        return count
     
     def coords(self):
         return (self.x, self.y)
