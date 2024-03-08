@@ -35,15 +35,16 @@ class Cell:
     def distance_to_cell(self, cell):
         return ((self.x - cell.x)**2 + (self.y - cell.y)**2)**0.5
     
-    def num_adjacent_white_squares(self, akari):
+    def adjacent_white_squares(self, akari) -> List[Tuple[int, int]]:
         count = 0
         neighbors = [(self.x+1, self.y), (self.x-1, self.y), (self.x, self.y+1), (self.x, self.y-1)]
+        final_neighbors = []
         
         for neighbor in neighbors:
             if neighbor in akari.cells and not akari.cells[neighbor].is_black:
-                count += 1
+                final_neighbors.append(neighbor)
                 
-        return count
+        return final_neighbors
     
     def coords(self):
         return (self.x, self.y)
@@ -132,4 +133,95 @@ class Akari:
                     
                     akari_file.write(int(byte, base=2).to_bytes(1, 'big'))
 
-            
+
+class SolutionState:
+    lamps: dict[tuple[int, int], bool | None]
+    solved = bool
+    illuminated_cells: dict[tuple[int, int], bool]
+    
+    def __init__(self, akari: Akari):
+        self.lamps = {(x, y): None for x in range(akari.grid_size_x) for y in range(akari.grid_size_y)}
+        self.illuminated_cells = {(x, y): False for x in range(akari.grid_size_x) for y in range(akari.grid_size_y)}
+        for cell in akari.cells.values():
+            if cell.is_black:
+                self.lamps[(cell.x, cell.y)] = False
+        self.solved = False
+        
+    def __str__(self):
+        return str(self.lamps)
+        
+    def unassigned_lamps(self):
+        return [key for key in self.lamps if self.lamps[key] is None]
+    
+    def assigned_lamps(self):
+        return [key for key in self.lamps if self.lamps[key] is not None and self.lamps[key] is True]
+    
+    def assign_lamp_value(self, akari, x, y, value):
+        self.lamps[(x, y)] = value
+        self.update_illuminated_cells_for_new_lamp(akari, x, y)
+        
+    def update_illuminated_cells_for_new_lamp(self, akari: Akari, x, y):
+        if self.lamps[(x, y)] is False:
+            return
+        for i in range(x+1, akari.grid_size_x):
+            if akari.cells[(i, y)].is_black:
+                break
+            self.illuminated_cells[(i, y)] = True
+        for i in range(x-1, -1, -1):
+            if akari.cells[(i, y)].is_black:
+                break
+            self.illuminated_cells[(i, y)] = True
+        for i in range(y+1, akari.grid_size_y):
+            if akari.cells[(x, i)].is_black:
+                break
+            self.illuminated_cells[(x, i)] = True
+        for i in range(y-1, -1, -1):
+            if akari.cells[(x, i)].is_black:
+                break
+            self.illuminated_cells[(x, i)] = True
+    
+    def all_numbered_squares_satisfied(self, akari: Akari):
+        for cell in akari.cells.values():
+            if cell.number is not None:
+                lamp_count = 0
+                for neighbor in cell.adjacent_white_squares(akari):
+                    if self.lamps[neighbor] is True:
+                        lamp_count += 1
+                if lamp_count != cell.number:
+                    return False
+        return True
+                
+    def all_cells_illuminated(self, akari: Akari):
+        for cell in akari.cells.values():
+            if not cell.is_black and not self.lamps[cell.coords()] and self.illuminated_cells[cell.coords()]:
+                return False
+        return True
+    
+    def is_valid(self, akari):
+        for lamp in self.assigned_lamps():
+            if self.illuminated_cells[lamp]:
+                return False
+        return True
+    
+    def is_solved(self, akari):
+        if self.all_numbered_squares_satisfied(akari) and self.all_cells_illuminated(akari):
+            self.solved = True
+            return True
+        return False
+    
+    
+def solve(akari: Akari, state: SolutionState | None) -> SolutionState | None:
+    if not state:
+        state = SolutionState(akari)
+    unassigned_lamps = state.unassigned_lamps()
+    if len(unassigned_lamps) == 0 or state.is_solved(akari):
+        return state
+    else:
+        for val in [True, False]:
+            new_state = copy.deepcopy(state)
+            new_state.assign_lamp_value(akari, *state.unassigned_lamps()[0], val)
+            if new_state.is_valid(akari):
+                new_state = solve(akari, new_state)
+                if new_state and new_state.is_solved(akari):
+                    return new_state
+    return None

@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import simpledialog
 from argparse import ArgumentParser
 
-from akari import Cell, Akari
+from akari import Cell, Akari, SolutionState, solve
 
 class AkariEditor:
     def __init__(self, master, load_from_file=None):
@@ -147,7 +147,7 @@ class AkariEditor:
         cell_id = self.canvas.create_rectangle(x1, y1, x2, y2, outline="light grey", fill=fill, tags=("cell", f"{i},{j}"))
         
         if cell.number is not None:
-            self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text=str(cell.number), font=('Arial', self.cell_size//2), fill='white', tags=(f"{cell.coords()}-number"))
+            self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text=str(cell.number), font=('Arial', self.cell_size//2), fill='light grey', tags=(f"{cell.coords()}-number"))
             
         self.akari.cells[(i, j)].id = cell_id
 
@@ -201,18 +201,24 @@ class AkariEditor:
             else:
                 self.akari.cells[self.highlighted_cell.coords()].number = number
             self.redraw_all()
-        
-    def find_cell_coordinates(self, cell):
-        for i in range(self.akari.grid_size_x):
-            for j in range(self.akari.grid_size_y):
-                if self.akari.cells[(i, j)] == cell:
-                    return i, j
-        return None, None 
     
     def solve(self):
         if self.solved:
             self.remove_solution()
+        solution = solve(self.akari, None)
+        print(solution)
+        if solution:
+            self.solved = True
+            self.draw_solution(solution)
         # TODO implement this
+        
+    def draw_solution(self, solution: SolutionState):
+        for lamp in solution.lamps:
+            if solution.lamps[lamp]:
+                x, y = lamp
+                x1, y1 = x * self.cell_size, y * self.cell_size
+                x2, y2 = x1 + self.cell_size, y1 + self.cell_size
+                self.canvas.create_oval(x1 + self.cell_size//4, y1 + self.cell_size//4, x2 - self.cell_size//4, y2 - self.cell_size//4, fill="yellow", tags="solution_path")
 
     def remove_solution(self):
         self.canvas.delete("solution_path")
