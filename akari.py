@@ -39,7 +39,6 @@ class Cell:
     def distance_to_cell(self, cell):
         return ((self.x - cell.x)**2 + (self.y - cell.y)**2)**0.5
     
-    
     def coords(self):
         return (self.x, self.y)
 
@@ -60,11 +59,13 @@ class Akari:
     def reset_cells(self):
         self.cells = {(x, y): Cell(x, y) for x in range(self.grid_size_x) for y in range(self.grid_size_y)}
 
-    # TODO: Fix this method for Akari instead of Maze
     def load_from_file(self, filename):
+        filename = os.path.normpath(filename)
+        if not filename.startswith('puzzles\\'):
+            filename = os.path.join('puzzles', filename)
         if not os.path.exists('puzzles'):
             os.makedirs('puzzles')
-        with open(os.path.join('puzzles', filename), 'rb') as maze_file:
+        with open(filename, 'rb') as maze_file:
             grid_size_x_byte = maze_file.read(1)
             grid_size_y_byte = maze_file.read(1)
             
@@ -100,22 +101,12 @@ class Akari:
                 if x == 0:
                     y += 1
 
-    # TODO: Fix this method for Akari instead of Maze
     def save_to_file(self, filename):
         if not os.path.exists('puzzles'):
             os.makedirs('puzzles')
         with open(os.path.join('puzzles', filename), 'wb') as akari_file:
             akari_file.write(int(self.grid_size_x).to_bytes(1, 'big'))
             akari_file.write(int(self.grid_size_y).to_bytes(1, 'big'))
-                    
-            # start_cell = next((cell for cell in self.cells.values() if cell.is_start), None)
-            # end_cell = next((cell for cell in self.cells.values() if cell.is_end), None)
-            
-            # akari_file.write(int(start_cell.x).to_bytes(1, 'big'))
-            # akari_file.write(int(start_cell.y).to_bytes(1, 'big'))
-            
-            # akari_file.write(int(end_cell.x).to_bytes(1, 'big'))
-            # akari_file.write(int(end_cell.y).to_bytes(1, 'big'))
             
             for y in range(self.grid_size_y):
                 for x in range(self.grid_size_x):
