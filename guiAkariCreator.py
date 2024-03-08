@@ -72,7 +72,7 @@ class AkariEditor:
         self.canvas.bind("<Button-3>", self.toggle_highlight)  # Right-click to highlight a cell
         
         for key in ('0', '1', '2', '3', '4'):
-            self.canvas.bind(key, self.place_number)
+            self.master.bind(key, self.place_number)
 
     def reset_grid(self):
         self.akari.reset_cells()
@@ -127,20 +127,28 @@ class AkariEditor:
                 x1, y1 = i * self.cell_size, j * self.cell_size
                 self.draw_cell(i, j, x1, y1)
                 cell = self.akari.cells[(i, j)]
-                if cell.highlight_rect:
-                    self.canvas.tag_raise(cell.highlight_rect)
+                    
+        if self.highlighted_cell and self.highlighted_cell.highlight_rect:
+
+            x1, y1 = self.highlighted_cell.coords()
+            x1 = x1 * self.cell_size
+            y1 = y1 * self.cell_size
+            x2, y2 = x1 + self.cell_size, y1 + self.cell_size
+            self.highlighted_cell.highlight_rect = self.canvas.create_rectangle(x1, y1, x2, y2, outline="cyan", width=2)
 
     def draw_cell(self, i, j, x1, y1):
         x2, y2 = x1 + self.cell_size, y1 + self.cell_size
         cell = self.akari.cells[(i, j)]
         fill = 'white'
+        
         if cell.is_black:
             fill = 'black'
-            
-            if cell.number is not None:
-                self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text=str(cell.number), font=('Arial', self.cell_size//2), fill='white', tags=(f"{cell.coords()}-number"))
                 
         cell_id = self.canvas.create_rectangle(x1, y1, x2, y2, outline="light grey", fill=fill, tags=("cell", f"{i},{j}"))
+        
+        if cell.number is not None:
+            self.canvas.create_text(x1 + self.cell_size / 2, y1 + self.cell_size / 2, text=str(cell.number), font=('Arial', self.cell_size//2), fill='white', tags=(f"{cell.coords()}-number"))
+            
         self.akari.cells[(i, j)].id = cell_id
 
     def prompt_cell_size(self):
@@ -158,6 +166,9 @@ class AkariEditor:
         i, j = (event.x // self.cell_size, event.y // self.cell_size)
         cell = self.akari.cells[(i, j)]
         cell.is_black = not cell.is_black
+        if not cell.is_black:
+            cell.number = None
+            self.canvas.delete(f"{cell.coords()}-number")
         self.redraw_all()
             
     def toggle_highlight(self, event):
@@ -181,14 +192,14 @@ class AkariEditor:
             self.highlighted_cell.highlight_rect = self.canvas.create_rectangle(x1, y1, x2, y2, outline="cyan", width=2)
 
     def place_number(self, event):
-        print('place number')
         number = int(event.char)
+        print(f'place number {number} in highlighted cell')
         if self.highlighted_cell:
             if number == 0:
                 self.canvas.delete(f"{self.highlighted_cell.coords()}-number")
-                self.highlighted_cell.number = None
+                self.akari.cells[self.highlighted_cell.coords()].number = None
             else:
-                self.highlighted_cell.number = number
+                self.akari.cells[self.highlighted_cell.coords()].number = number
             self.redraw_all()
         
     def find_cell_coordinates(self, cell):
@@ -215,14 +226,14 @@ class AkariEditor:
         pass
 
 parser = ArgumentParser(
-                prog='guiMazeCreator.py',
-                description='Edits, saves, and solves mazes')
-parser.add_argument('-f','--filename', required=False, help='The filename of the maze to load from') 
+                prog='guiAkariCreator.py',
+                description='Edits, saves, and solves Akari puzzles')
+parser.add_argument('-f','--filename', required=False, help='The filename of the puzzle to load from') 
 args = parser.parse_args()
 
 def main():
     root = tk.Tk()
-    root.title("Maze Editor")
+    root.title("Akari Editor")
     app = AkariEditor(root, args.filename if args.filename else None)
     root.mainloop()
 
