@@ -18,8 +18,8 @@ class Cell:
     def __init__(self, x, y, is_black=False, number=None):
         self.x = x
         self.y = y
-        self.is_black = False
-        self.number = None
+        self.is_black = is_black
+        self.number = number
         self.highlight_rect = None
         self.id = None
 
