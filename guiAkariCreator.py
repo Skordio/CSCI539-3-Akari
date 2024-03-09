@@ -1,10 +1,13 @@
 import tkinter as tk
+import random, copy
 from tkinter import simpledialog
 from argparse import ArgumentParser
 
 from akari import Cell, Akari, SolutionState, solve
 
 class AkariEditor:
+    illuminated_cells: dict[tuple[int, int], bool]
+    
     def __init__(self, master, load_from_file=None):
         self.master = master
         self.highlighted_cell = None
@@ -12,6 +15,8 @@ class AkariEditor:
         self.solved = False
         
         self.akari = Akari(7, 7)
+        
+        self.illuminated_cells = {(x, y): False for x in range(self.akari.grid_size_x) for y in range(self.akari.grid_size_y)}
         
         self.create_widgets()
         self.reset_grid()
@@ -46,6 +51,12 @@ class AkariEditor:
         self.size_button = tk.Button(self.button_frame1, text="Set Cell Size", command=self.prompt_cell_size)
         self.size_button.pack(side=tk.RIGHT)
 
+        self.number_button = tk.Button(self.button_frame1, text="Place Number", command=self.place_number_prompt)
+        self.number_button.pack(side=tk.LEFT)
+
+        self.number_button = tk.Button(self.button_frame1, text="Remove Number", command=self.remove_number)
+        self.number_button.pack(side=tk.LEFT)
+
         # Second row of buttons
         self.button_frame2 = tk.Frame(self.master)
         self.button_frame2.pack(side=tk.TOP, fill=tk.X, padx=20)
@@ -70,6 +81,8 @@ class AkariEditor:
         self.load_from_file_button.pack(side=tk.RIGHT)
         
         self.canvas.bind("<Button-3>", self.toggle_highlight)  # Right-click to highlight a cell
+        
+        self.master.bind('<space>', self.place_number)
         
         for key in ('0', '1', '2', '3', '4'):
             self.master.bind(key, self.place_number)
@@ -143,6 +156,9 @@ class AkariEditor:
         
         if cell.is_black:
             fill = 'black'
+            
+        if self.illuminated_cells[cell.coords()]:
+            fill = 'yellow'
                 
         cell_id = self.canvas.create_rectangle(x1, y1, x2, y2, outline="light grey", fill=fill, tags=("cell", f"{i},{j}"))
         
@@ -192,26 +208,65 @@ class AkariEditor:
             self.highlighted_cell.highlight_rect = self.canvas.create_rectangle(x1, y1, x2, y2, outline="cyan", width=2)
 
     def place_number(self, event):
-        number = int(event.char)
-        print(f'place number {number} in highlighted cell')
+        number = 0
+        if(event.keysym == 'space'):
+            number = -1
+        else:
+            number = int(event.char)
+        
         if self.highlighted_cell:
-            if number == 0:
+            if number == -1:
                 self.canvas.delete(f"{self.highlighted_cell.coords()}-number")
                 self.akari.cells[self.highlighted_cell.coords()].number = None
             else:
                 self.akari.cells[self.highlighted_cell.coords()].number = number
+            self.redraw_all()
+            
+    def place_number_prompt(self):
+        number = simpledialog.askinteger("Input", "Enter number to place in highlighted cell:", parent=self.master, minvalue=0, maxvalue=4)
+        if number or number == 0:
+            if self.highlighted_cell:
+                self.akari.cells[self.highlighted_cell.coords()].number = number
+                self.redraw_all()
+                
+    def remove_number(self):
+        if self.highlighted_cell:
+            self.canvas.delete(f"{self.highlighted_cell.coords()}-number")
+            self.akari.cells[self.highlighted_cell.coords()].number = None
             self.redraw_all()
     
     def solve(self):
         if self.solved:
             self.remove_solution()
         solution = solve(self.akari, None)
-        print(solution)
         if solution:
             self.solved = True
             self.draw_solution(solution)
         # TODO implement this
-        
+    
+    def solve_step(self, akari: Akari, state: SolutionState | None) -> SolutionState | None:
+        if not state:
+            state = SolutionState(akari)
+        unassigned_lamps = state.unassigned_lamps(akari)
+        if len(unassigned_lamps) == 0 or state.solved:
+            return state
+        else:
+            for val in [True, False]:
+                new_state = copy.deepcopy(state)
+                new_state.assign_lamp_value(akari, *unassigned_lamps[0], val)
+                new_state.is_solved(akari)
+                self.illuminated_cells = new_state.illuminated_cells
+                if new_state.is_valid(akari):
+                    self.redraw_all()
+                    self.draw_solution(new_state)
+                    print(f'state.all_numbered_squares_satisfied: {new_state.all_numbered_squares_satisfied(akari)}')
+                    print(f'state.all_cells_illuminated: {new_state.all_cells_illuminated(akari)}')
+                    input(f'state.solved: {new_state.solved}')
+                    new_state = self.solve_step(akari, new_state)
+                    if new_state and new_state.solved:
+                        return new_state
+        return None
+            
     def draw_solution(self, solution: SolutionState):
         for lamp in solution.lamps:
             if solution.lamps[lamp]:
