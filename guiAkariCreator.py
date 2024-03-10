@@ -1,5 +1,5 @@
 import tkinter as tk
-import random, copy
+import random, copy, time
 from tkinter import simpledialog
 from argparse import ArgumentParser
 
@@ -7,6 +7,7 @@ from akari import Cell, Akari, SolutionState, solve, generate_akari_puzzle
 
 class AkariEditor:
     illuminated_cells: dict[tuple[int, int], bool]
+    akari: Akari
     
     def __init__(self, master, load_from_file=None):
         self.master = master
@@ -48,20 +49,20 @@ class AkariEditor:
         # self.number_button = tk.Button(self.button_frame1, text="Place Number", command=self.place_number)
         # self.number_button.pack(side=tk.LEFT)
 
-        self.size_button = tk.Button(self.button_frame1, text="Set Cell Size", command=self.prompt_cell_size)
+        self.size_button = tk.Button(self.button_frame1, text="Set Cell Size", command=self.cell_size_change_push)
         self.size_button.pack(side=tk.RIGHT)
 
-        self.number_button = tk.Button(self.button_frame1, text="Place Number", command=self.place_number_prompt)
+        self.number_button = tk.Button(self.button_frame1, text="Place Number", command=self.place_number_push)
         self.number_button.pack(side=tk.LEFT)
 
-        self.number_button = tk.Button(self.button_frame1, text="Remove Number", command=self.remove_number)
+        self.number_button = tk.Button(self.button_frame1, text="Remove Number", command=self.remove_number_push)
         self.number_button.pack(side=tk.LEFT)
 
         # Second row of buttons
         self.button_frame2 = tk.Frame(self.master)
         self.button_frame2.pack(side=tk.TOP, fill=tk.X, padx=20)
 
-        self.solve_button = tk.Button(self.button_frame2, text="Solve", command=self.solve)
+        self.solve_button = tk.Button(self.button_frame2, text="Solve", command=self.solve_push)
         self.solve_button.pack(side=tk.LEFT)
 
         self.remove_solution_button = tk.Button(self.button_frame2, text="Remove Solution", command=self.remove_solution)
@@ -82,10 +83,10 @@ class AkariEditor:
         
         self.canvas.bind("<Button-3>", self.toggle_highlight)  # Right-click to highlight a cell
         
-        self.master.bind('<space>', self.place_number)
+        self.master.bind('<space>', self.place_number_keypad)
         
         for key in ('0', '1', '2', '3', '4'):
-            self.master.bind(key, self.place_number)
+            self.master.bind(key, self.place_number_keypad)
 
     def reset_grid(self):
         self.akari.reset_cells()
@@ -167,7 +168,7 @@ class AkariEditor:
             
         self.akari.cells[(i, j)].id = cell_id
 
-    def prompt_cell_size(self):
+    def cell_size_change_push(self):
         size = simpledialog.askinteger("Input", "Enter cell size (default is 40, min is 20, max is 60):", parent=self.master, minvalue=20, maxvalue=60)
         if size:
             self.cell_size = size        
@@ -207,7 +208,7 @@ class AkariEditor:
             x2, y2 = x1 + self.cell_size, y1 + self.cell_size
             self.highlighted_cell.highlight_rect = self.canvas.create_rectangle(x1, y1, x2, y2, outline="cyan", width=2)
 
-    def place_number(self, event):
+    def place_number_keypad(self, event):
         number = 0
         if(event.keysym == 'space'):
             number = -1
@@ -222,27 +223,26 @@ class AkariEditor:
                 self.akari.cells[self.highlighted_cell.coords()].number = number
             self.redraw_all()
             
-    def place_number_prompt(self):
+    def place_number_push(self):
         number = simpledialog.askinteger("Input", "Enter number to place in highlighted cell:", parent=self.master, minvalue=0, maxvalue=4)
         if number or number == 0:
             if self.highlighted_cell:
                 self.akari.cells[self.highlighted_cell.coords()].number = number
                 self.redraw_all()
                 
-    def remove_number(self):
+    def remove_number_push(self):
         if self.highlighted_cell:
             self.canvas.delete(f"{self.highlighted_cell.coords()}-number")
             self.akari.cells[self.highlighted_cell.coords()].number = None
             self.redraw_all()
     
-    def solve(self):
+    def solve_push(self):
         if self.solved:
             self.remove_solution()
         solution = solve(self.akari, None)
         if solution:
             self.solved = True
             self.draw_solution(solution)
-        # TODO implement this
         
     def new_akari(self):
         self.akari = generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y)
@@ -264,12 +264,18 @@ class AkariEditor:
                 if new_state.is_valid():
                     self.redraw_all()
                     self.draw_solution(new_state)
-                    print(f'state.all_numbered_squares_satisfied: {new_state.all_numbered_squares_satisfied()}')
-                    print(f'state.all_cells_illuminated: {new_state.all_cells_illuminated()}')
-                    input(f'state.solved: {new_state.solved}')
-                    new_state = self.solve_step(akari, new_state)
-                    if new_state and new_state.solved:
-                        return new_state
+                    # time.sleep(0.1)
+                    # print(f'state.all_numbered_squares_satisfied: {new_state.all_numbered_squares_satisfied()}')
+                    # print(f'state.all_cells_illuminated: {new_state.all_cells_illuminated()}')
+                    # input(f'state.solved: {new_state.solved}')
+                    input()
+                    ok = new_state.forward_check()
+                    if ok:
+                        new_state = self.solve_step(akari, new_state)
+                        if new_state and new_state.solved:
+                            return new_state
+                    else:
+                        continue
         return None
             
     def draw_solution(self, solution: SolutionState):
