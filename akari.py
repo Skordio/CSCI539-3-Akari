@@ -37,13 +37,15 @@ class Cell:
     def distance_to_cell(self, cell):
         return ((self.x - cell.x)**2 + (self.y - cell.y)**2)**0.5
     
-    def adjacent_cells(self, white_only=False):
+    def adjacent_cells(self, white_only=False, numbered_only=False):
         count = 0
         neighbors = [(self.x+1, self.y), (self.x-1, self.y), (self.x, self.y+1), (self.x, self.y-1)]
         final_neighbors: list[tuple[int, int]] = []
         
         for neighbor in neighbors:
-            if neighbor in self.akari.cells and (not white_only or white_only and not self.akari.cells[neighbor].is_black):
+            if  neighbor in self.akari.cells.keys() and \
+                ((not white_only) or (white_only and not self.akari.cells[neighbor].is_black)) and \
+                ((not numbered_only) or (numbered_only and self.akari.cells[neighbor].number is not None)):
                 final_neighbors.append(neighbor)
                 
         return final_neighbors
@@ -171,16 +173,16 @@ class SolutionState:
         return str(self.lamps)
         
     def unassigned_lamps(self) -> List[Tuple[int, int]]:
-        # white_cells_adjacent_to_numbered_cells = [cell for cell in self.akari.white_cells_adjacent_to_numbered_cells()]
-        # unassigned_high_priority = []
-        # the_rest = []
-        # for key in self.lamps:
-        #     if self.lamps[key] is None and self.illuminated_cells[key] is False:
-        #         if key in white_cells_adjacent_to_numbered_cells:
-        #             unassigned_high_priority.append(key)
-        #         else:
-        #             the_rest.append(key)
-        # return unassigned_high_priority + the_rest
+        white_cells_adjacent_to_numbered_cells = [cell for cell in self.akari.white_cells_adjacent_to_numbered_cells()]
+        unassigned_high_priority = []
+        the_rest = []
+        for key in self.lamps:
+            if self.lamps[key] is None and self.illuminated_cells[key] is False:
+                if key in white_cells_adjacent_to_numbered_cells:
+                    unassigned_high_priority.append(key)
+                else:
+                    the_rest.append(key)
+        return unassigned_high_priority + the_rest
         
         # Prioritize cells by constraint strength
         cells_by_constraint = sorted(
@@ -212,29 +214,77 @@ class SolutionState:
                 continue
             
             cell_can_be_illuminated = False
-            ranges = [range(cell.x+1, self.akari.grid_size_x), range(cell.x-1, -1, -1), range(cell.y+1, self.akari.grid_size_y), range(cell.y-1, -1, -1)]
             # walk up, down, left, right from cell until we see a black cell or the edge of the grid
-            for cell_range in ranges:
-                for i in cell_range:
+            # right
+            for i in range(cell.x+1, self.akari.grid_size_x):
+                if self.akari.cells[(i, cell.y)].is_black:
+                    break
+                if self.cell_can_contain_lamp(i, cell.y):
+                    cell_can_be_illuminated = True
+                    break
+            # left
+            if not cell_can_be_illuminated:
+                for i in range(cell.x-1, -1, -1):
                     if self.akari.cells[(i, cell.y)].is_black:
                         break
                     if self.cell_can_contain_lamp(i, cell.y):
                         cell_can_be_illuminated = True
                         break
-                if cell_can_be_illuminated:
-                    break
+            # down
+            if not cell_can_be_illuminated:
+                for i in range(cell.y+1, self.akari.grid_size_y):
+                    if self.akari.cells[(cell.x, i)].is_black:
+                        break
+                    if self.cell_can_contain_lamp(cell.x, i):
+                        cell_can_be_illuminated = True
+                        break
+            # up
+            if not cell_can_be_illuminated:
+                for i in range(cell.y-1, -1, -1):
+                    if self.akari.cells[(cell.x, i)].is_black:
+                        break
+                    if self.cell_can_contain_lamp(cell.x, i):
+                        cell_can_be_illuminated = True
+                        break
             if not cell_can_be_illuminated:
                 return False
+            
         return True
             
     def cell_can_contain_lamp(self, x:int, y:int):
+        cell = self.akari.cells[(x, y)]
+        
         if self.illuminated_cells[(x, y)]:
             return False
-        if self.akari.cells[(x, y)].is_black:
+        if cell.is_black:
             return False
-        if self.akari.cells[(x, y)].adjacent_to_zero_cell():
-            return False
+        
+        adjacent_numbered_cells = cell.adjacent_cells(numbered_only=True)
+        for adj in adjacent_numbered_cells:
+            adj_cell = self.akari.cells[adj]
+            if adj_cell.number is not None and self.numbered_cell_num_lamps(adj_cell) == adj_cell.number:
+                return False
+                
         return True
+    
+    def cell_must_contain_lamp(self, x:int, y:int):
+        cell = self.akari.cells[(x, y)]
+        must_have_lamp = False
+        
+        adjacent_numbered_cells = cell.adjacent_cells(numbered_only=True)
+        for adj in adjacent_numbered_cells:
+            adj_cell = self.akari.cells[adj]
+            
+            adj_cell_white_cells = adj_cell.adjacent_cells(white_only=True)
+            for other_cell in adj_cell_white_cells:
+                if self.lamps[other_cell] is not None:
+                    adj_cell_white_cells.remove(other_cell)
+                    
+            if adj_cell.number is not None and self.numbered_cell_num_lamps(adj_cell) == adj_cell.number - 1 and len(adj_cell_white_cells) == 1:
+                must_have_lamp = True
+        
+        return must_have_lamp
+        
             
     def numbered_cell_num_lamps(self, cell:Cell):
         lamp_count = 0
@@ -244,12 +294,34 @@ class SolutionState:
         return lamp_count
     
     def assign_lamp_value(self, x, y, value):
+        old_value = self.lamps[(x, y)]
         self.lamps[(x, y)] = value
-        self.update_illuminated_cells_for_new_lamp(x, y)
+        if value is True:
+            self.update_illuminated_cells_for_lamp(x, y)
+        elif value is False and old_value is True:
+            self.update_illuminated_cells()
         
-    def update_illuminated_cells_for_new_lamp(self, x, y):
-        if self.lamps[(x, y)] is False:
-            return
+    def update_illuminated_cells(self):
+        self.illuminated_cells = {(x, y): False for x in range(self.akari.grid_size_x) for y in range(self.akari.grid_size_y)}
+        for lamp in [lamp for lamp in self.lamps.keys() if self.lamps[lamp]]:
+            for i in range(lamp[0]+1, self.akari.grid_size_x):
+                if self.akari.cells[(i, lamp[1])].is_black:
+                    break
+                self.illuminated_cells[(i, lamp[1])] = True
+            for i in range(lamp[0]-1, -1, -1):
+                if self.akari.cells[(i, lamp[1])].is_black:
+                    break
+                self.illuminated_cells[(i, lamp[1])] = True
+            for i in range(lamp[1]+1, self.akari.grid_size_y):
+                if self.akari.cells[(lamp[0], i)].is_black:
+                    break
+                self.illuminated_cells[(lamp[0], i)] = True
+            for i in range(lamp[1]-1, -1, -1):
+                if self.akari.cells[(lamp[0], i)].is_black:
+                    break
+                self.illuminated_cells[(lamp[0], i)] = True
+        
+    def update_illuminated_cells_for_lamp(self, x, y):
         for i in range(x+1, self.akari.grid_size_x):
             if self.akari.cells[(i, y)].is_black:
                 break
@@ -282,27 +354,27 @@ class SolutionState:
         while changes_made:
             changes_made = False
             for cell in self.akari.cells.values():
-                if cell.is_black or not self.lamps[cell.coords()]:
+                if cell.is_black or self.lamps[cell.coords()] is not None:
                     continue
                 
                 must_have_lamp, cannot_have_lamp = self.check_cell_constraints(cell)
                 if must_have_lamp:
                     self.assign_lamp_value(cell.x, cell.y, True)
-                    changes_made = True
+                    if self.is_valid():
+                        changes_made = True
+                    else:
+                        self.assign_lamp_value(cell.x, cell.y, None)
                 elif cannot_have_lamp:
                     self.assign_lamp_value(*cell.coords(), False)
-                    changes_made = True
+                    if self.is_valid():
+                        changes_made = True
+                    else:
+                        self.assign_lamp_value(cell.x, cell.y, None)
 
     def check_cell_constraints(self, cell:Cell):
         cannot_have_lamp = not self.cell_can_contain_lamp(cell.x, cell.y)
         
-        must_have_lamp = False
-        
-        adjacent_numbered_cells = [cell for cell in cell.adjacent_cells() if self.akari.cells[cell].number is not None]
-        for adj in adjacent_numbered_cells:
-            adj_cell = self.akari.cells[adj]
-            if adj_cell.number is not None and self.numbered_cell_num_lamps(adj_cell) == adj_cell.number - 1:
-                must_have_lamp = True
+        must_have_lamp = self.cell_must_contain_lamp(cell.x, cell.y)
                 
         return must_have_lamp, cannot_have_lamp
 
@@ -429,7 +501,7 @@ def generate_solved_grid(akari: Akari):
             solution.assign_lamp_value(x, y, None)
         else:
             # Update illuminated cells for the newly placed lamp
-            solution.update_illuminated_cells_for_new_lamp(x, y)
+            solution.update_illuminated_cells()
         
         attempts += 1
 

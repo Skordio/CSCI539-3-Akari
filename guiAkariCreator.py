@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from akari import Cell, Akari, SolutionState, solve, generate_akari_puzzle
 
 class AkariEditor:
-    illuminated_cells: dict[tuple[int, int], bool]
+    solution_state: SolutionState | None
     akari: Akari
     
     def __init__(self, master, load_from_file=None):
@@ -17,7 +17,7 @@ class AkariEditor:
         
         self.akari = Akari(7, 7)
         
-        self.illuminated_cells = {(x, y): False for x in range(self.akari.grid_size_x) for y in range(self.akari.grid_size_y)}
+        self.solution_state = SolutionState(self.akari)
         
         self.create_widgets()
         self.reset_grid()
@@ -158,7 +158,7 @@ class AkariEditor:
         if cell.is_black:
             fill = 'black'
             
-        if self.illuminated_cells[cell.coords()]:
+        if self.solution_state and self.solution_state.illuminated_cells[cell.coords()]:
             fill = 'yellow'
                 
         cell_id = self.canvas.create_rectangle(x1, y1, x2, y2, outline="light grey", fill=fill, tags=("cell", f"{i},{j}"))
@@ -237,12 +237,12 @@ class AkariEditor:
             self.redraw_all()
     
     def solve_push(self):
-        if self.solved:
+        if self.solution_state:
             self.remove_solution()
         solution = solve(self.akari, None)
         if solution:
-            self.solved = True
-            self.draw_solution(solution)
+            self.solution_state = solution
+            self.draw_solution()
         
     def new_akari(self):
         self.akari = generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y)
@@ -258,29 +258,69 @@ class AkariEditor:
         else:
             for val in [True, False]:
                 new_state = copy.deepcopy(state)
+                print('took next step')
                 new_state.assign_lamp_value(*unassigned_lamps[0], val)
                 new_state.is_solved()
-                self.illuminated_cells = new_state.illuminated_cells
                 if new_state.is_valid():
+                    self.solution_state = new_state
                     self.redraw_all()
-                    self.draw_solution(new_state)
-                    # time.sleep(0.1)
-                    # print(f'state.all_numbered_squares_satisfied: {new_state.all_numbered_squares_satisfied()}')
-                    # print(f'state.all_cells_illuminated: {new_state.all_cells_illuminated()}')
-                    # input(f'state.solved: {new_state.solved}')
+                    self.draw_solution()
                     input()
                     ok = new_state.forward_check()
                     if ok:
+                        self.do_propogate_constrains()
+                        input()
                         new_state = self.solve_step(akari, new_state)
                         if new_state and new_state.solved:
                             return new_state
                     else:
                         continue
         return None
+    
+    def propagate_constraints(self,):
+        if self.solution_state:
+            changes_made = True
+            while changes_made:
+                print('propagating')
+                changes_made = False
+                change_made = ''
+                for cell in self.akari.cells.values():
+                    if cell.is_black or self.solution_state.lamps[cell.coords()] is not None:
+                        continue
+                    
+                    must_have_lamp, cannot_have_lamp = self.solution_state.check_cell_constraints(cell)
+                    if must_have_lamp:
+                        self.solution_state.assign_lamp_value(cell.x, cell.y, True)
+                        if self.solution_state.is_valid():
+                            changes_made = True
+                            change_made = f'assigned lamp to {cell.coords()}'
+                            break
+                        else:
+                            self.solution_state.assign_lamp_value(cell.x, cell.y, None)
+                    elif cannot_have_lamp:
+                        self.solution_state.assign_lamp_value(*cell.coords(), False)
+                        if self.solution_state.is_valid():
+                            changes_made = True
+                            change_made = f'assigned no lamp to {cell.coords()}'
+                            break
+                        else:
+                            self.solution_state.assign_lamp_value(cell.x, cell.y, None)
+                # print(change_made)
+                # self.redraw_all()
+                # self.draw_solution()
+                # input()
+        
+    def do_propogate_constrains(self):
+        self.propagate_constraints()
+        self.redraw_all()
+        self.draw_solution()
             
-    def draw_solution(self, solution: SolutionState):
-        for lamp in solution.lamps:
-            if solution.lamps[lamp]:
+    def draw_solution(self):
+        self.redraw_all()
+        if not self.solution_state:
+            return
+        for lamp in self.solution_state.lamps:
+            if self.solution_state.lamps[lamp]:
                 x, y = lamp
                 x1, y1 = x * self.cell_size, y * self.cell_size
                 x2, y2 = x1 + self.cell_size, y1 + self.cell_size
@@ -288,7 +328,8 @@ class AkariEditor:
 
     def remove_solution(self):
         self.canvas.delete("solution_path")
-        self.solved = False
+        self.solution_state = None
+        self.redraw_all()
     
 
 parser = ArgumentParser(
