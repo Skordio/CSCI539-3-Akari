@@ -3,7 +3,7 @@ import random, copy
 from tkinter import simpledialog
 from argparse import ArgumentParser
 
-from akari import Cell, Akari, SolutionState, solve
+from akari import Cell, Akari, SolutionState, solve, generate_akari_puzzle
 
 class AkariEditor:
     illuminated_cells: dict[tuple[int, int], bool]
@@ -243,24 +243,29 @@ class AkariEditor:
             self.solved = True
             self.draw_solution(solution)
         # TODO implement this
+        
+    def new_akari(self):
+        self.akari = generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y)
+        self.redraw_all()
+        
     
     def solve_step(self, akari: Akari, state: SolutionState | None) -> SolutionState | None:
         if not state:
             state = SolutionState(akari)
-        unassigned_lamps = state.unassigned_lamps(akari)
+        unassigned_lamps = state.unassigned_lamps()
         if len(unassigned_lamps) == 0 or state.solved:
             return state
         else:
             for val in [True, False]:
                 new_state = copy.deepcopy(state)
-                new_state.assign_lamp_value(akari, *unassigned_lamps[0], val)
-                new_state.is_solved(akari)
+                new_state.assign_lamp_value(*unassigned_lamps[0], val)
+                new_state.is_solved()
                 self.illuminated_cells = new_state.illuminated_cells
-                if new_state.is_valid(akari):
+                if new_state.is_valid():
                     self.redraw_all()
                     self.draw_solution(new_state)
-                    print(f'state.all_numbered_squares_satisfied: {new_state.all_numbered_squares_satisfied(akari)}')
-                    print(f'state.all_cells_illuminated: {new_state.all_cells_illuminated(akari)}')
+                    print(f'state.all_numbered_squares_satisfied: {new_state.all_numbered_squares_satisfied()}')
+                    print(f'state.all_cells_illuminated: {new_state.all_cells_illuminated()}')
                     input(f'state.solved: {new_state.solved}')
                     new_state = self.solve_step(akari, new_state)
                     if new_state and new_state.solved:
@@ -278,13 +283,7 @@ class AkariEditor:
     def remove_solution(self):
         self.canvas.delete("solution_path")
         self.solved = False
-        
-    def new_akari(self):
-        # TODO implement this
-        # fun_score = simpledialog.askinteger("Input", "Enter fun score from 1 to 4 (note - higher fun scores will take longer to generate):", parent=self.master, minvalue=1, maxvalue=4)
-        # self.akari.new_maze_random_path(fun_score)
-        # self.redraw_all()
-        pass
+    
 
 parser = ArgumentParser(
                 prog='guiAkariCreator.py',
