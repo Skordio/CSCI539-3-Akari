@@ -239,13 +239,17 @@ class AkariEditor:
     def solve_push(self):
         if self.solution_state:
             self.remove_solution()
-        solution = solve(self.akari, None)
+        solution, depth = solve(self.akari, None)
         if solution:
+            print(f'solved in {depth} steps')
             self.solution_state = solution
             self.draw_solution()
+        else:
+            print(f'failed after {depth} steps')
         
     def new_akari(self):
-        self.akari = generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y)
+        akari = generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y)
+        self.akari = akari if akari else self.akari
         self.redraw_all()
         
     

@@ -399,6 +399,8 @@ class SolutionState:
         return [cell for cell in self.akari.cells.values() if not cell.is_black and not self.lamps[cell.coords()] and not self.illuminated_cells[cell.coords()]]
     
     def is_valid(self):
+        if not self.all_numbered_squares_valid():
+            return False
         for lamp in self.assigned_lamps():
             if self.illuminated_cells[lamp]:
                 return False
@@ -411,12 +413,15 @@ class SolutionState:
         return False
     
     
-def solve(akari: Akari, state: SolutionState | None) -> SolutionState | None:
+def solve(akari: Akari, state: SolutionState | None, depth:int = 0, max_depth:int|None = None) -> tuple[SolutionState | None, int]:
+    depth += 1
+    if max_depth and depth > max_depth:
+        return None, depth
     if not state:
         state = SolutionState(akari)
     unassigned_lamps = state.unassigned_lamps()
     if len(unassigned_lamps) == 0 or state.solved:
-        return state
+        return state, depth
     else:
         for val in [True, False]:
             new_state = copy.deepcopy(state)
@@ -426,13 +431,15 @@ def solve(akari: Akari, state: SolutionState | None) -> SolutionState | None:
                 ok = new_state.forward_check()
                 if ok:
                     new_state.propagate_constraints()
-                    new_state = solve(akari, new_state)
+                    new_state, new_depth = solve(akari, new_state, depth, max_depth)
                     if new_state and new_state.solved:
-                        return new_state
+                        return new_state, new_depth
+                    elif max_depth and new_depth > max_depth:
+                        return None, new_depth
                 else:
                     continue
-    return None
-   
+    return None, depth
+    
     
 def add_black_cells_and_clues(akari: Akari):
     # This function assumes that a solved grid has been generated and
@@ -475,53 +482,37 @@ def add_black_cells_and_clues(akari: Akari):
                 else:
                     break
             akari.cells[(x, y)].number = number  
-
-
-def generate_solved_grid(akari: Akari):
-    # Randomly place lamps in a way that they don't illuminate each other
-    # and try to fully illuminate the grid.
-    
-    attempts = 0
-    max_attempts = 100  # To prevent infinite loops
+            
+            
+def lamps_must_intersect(akari: Akari):
     solution = SolutionState(akari)
-
-    while not (solution.is_valid() and solution.all_cells_illuminated()) and attempts < max_attempts:
-        x = random.randint(0, akari.grid_size_x - 1)
-        y = random.randint(0, akari.grid_size_y - 1)
-        cell = akari.cells[(x, y)]
-        
-        # Skip if the cell is black or already has a lamp
-        if cell.is_black or solution.lamps[(x, y)]:
-            continue
-        
-        # Temporarily assign a lamp to check if it violates any rule
-        solution.assign_lamp_value(x, y, True)
-        if not solution.is_valid():
-            # If invalid, remove the lamp and try another cell
-            solution.assign_lamp_value(x, y, None)
-        else:
-            # Update illuminated cells for the newly placed lamp
-            solution.update_illuminated_cells()
-        
-        attempts += 1
-
-    # This is a basic and naive approach and might not fully illuminate the grid
-    # or ensure that all rules are satisfied. Further refinement and checks may be necessary.
-    if not solution.all_cells_illuminated():
-        return akari, solution
-    else:
-        return None, None
+    numbered_cells = [cell for cell in akari.cells.values() if cell.number is not None]
+    cells_that_must_have_lamps:list[tuple[int, int]] = []
     
+    for cell in numbered_cells:
+        white_neighbors = cell.adjacent_cells(white_only=True)
+        if len(white_neighbors) == cell.number:
+            cells_that_must_have_lamps.extend(white_neighbors)
+            
+    for cell in cells_that_must_have_lamps:
+        solution.assign_lamp_value(*cell, True)
+        if not solution.is_valid():
+            return True
+    
+    return False
+           
     
 def check_unique_solution(akari: Akari):
     print('check unique solution called')
     # Attempt to solve the puzzle using the existing solve function
     initial_state = SolutionState(akari)
-    solved_state = solve(akari, initial_state)
+    solved_state, depth = solve(akari, initial_state, 0, 25)
     
     if solved_state is None or not solved_state.solved:
+        print(f'failed after {depth} iterations')
         # If the puzzle cannot be solved, then it definitely does not have a unique solution
         return False
+    print(f'succeeded after {depth} iterations')
     
     # Assuming the solve function attempts all possibilities and backtracks,
     # we can further verify the uniqueness by ensuring that no cell that can hold a lamp
@@ -537,7 +528,7 @@ def check_unique_solution(akari: Akari):
             if test_state.is_valid():
                 # If placing a lamp here doesn't immediately break the rules,
                 # attempt to solve the puzzle again from this state.
-                test_state = solve(akari, test_state)
+                test_state, depth = solve(akari, test_state)
                 if test_state and test_state.solved:
                     # If the puzzle can be solved with this change, it means there's at least a second solution
                     return False
@@ -599,33 +590,30 @@ def adjust_puzzle_for_single_solution(akari: Akari):
         return True
 
 
-# Note: Before calling generate_solved_grid, ensure akari.solution_state is initialized properly.
 def generate_akari_puzzle(grid_size_x, grid_size_y):
     good_puzzle = False
     good_puzzle_attempts = 10
     
-    # while not good_puzzle and good_puzzle_attempts > 0:
-    #     print(f'outside loop iteration {11-good_puzzle_attempts}')
-    #     good_puzzle_attempts -= 1
+    while not good_puzzle and good_puzzle_attempts > 0:
+        print(f'outside loop iteration {11-good_puzzle_attempts}')
+        good_puzzle_attempts -= 1
     
-    #     akari = Akari(grid_size_x, grid_size_y)
+        akari = Akari(grid_size_x, grid_size_y)
+        add_black_cells_and_clues(akari)
         
-    #     add_black_cells_and_clues(akari)
+        while lamps_must_intersect(akari):
+            akari = Akari(grid_size_x, grid_size_y)
+            add_black_cells_and_clues(akari)
+            
+        solution, depth = solve(akari, None, 0, 25)
         
-    #     good_puzzle = adjust_puzzle_for_single_solution(akari)
+        if not solution:
+            continue
+        else:
+            good_puzzle = adjust_puzzle_for_single_solution(akari)
     
-    akari = Akari(grid_size_x, grid_size_y)
-    add_black_cells_and_clues(akari)
-
-    return akari
+    if not good_puzzle:
+        return None
+    else:
+        return akari
     
-    # while akari is None or solution is None:
-    #     akari = Akari(grid_size_x, grid_size_y)
-    #     akari, solution = generate_solved_grid(akari)
-    
-    # # Ensure the puzzle has a single solution
-    # while not check_unique_solution(akari):
-    #     adjust_puzzle_for_single_solution(akari)
-    
-    # # Return the puzzle that now has exactly one solution
-    # return akari
