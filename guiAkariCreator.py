@@ -75,6 +75,9 @@ class AkariEditor:
         self.new_random_maze_button = tk.Button(self.button_frame3, text="Generate", command=self.new_akari)
         self.new_random_maze_button.pack(side=tk.LEFT)
         
+        self.new_random_maze_button = tk.Button(self.button_frame3, text="Check Unique", command=self.check_unique_push)
+        self.new_random_maze_button.pack(side=tk.LEFT)
+        
         self.save_to_file_button = tk.Button(self.button_frame3, text="Save to File", command=self.save_to_file_prompt)
         self.save_to_file_button.pack(side=tk.RIGHT)
         
@@ -247,6 +250,13 @@ class AkariEditor:
             self.draw_solution()
         else:
             print(f'failed to solve puzzle')
+            
+    def check_unique_push(self):
+        unique, solution = AkariGenerator().check_unique_solution(self.akari)
+        self.solution_state = solution
+        self.redraw_all()
+        self.draw_solution()
+        print(f'if solution unique: {unique}')
         
     def new_akari(self):
         self.remove_solution()
