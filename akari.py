@@ -184,6 +184,7 @@ class SolutionState:
             print(f'{len(cells_that_must_have_lamps)} cells must have lamps')
         for cell in cells_that_must_have_lamps:
             self.assign_lamp_value(*cell, True)
+        self.propagate_constraints()
         self.solved = False
         
     def __str__(self):
@@ -287,7 +288,7 @@ class SolutionState:
             
             adj_cell_white_cells = adj_cell.adjacent_cells(white_only=True)
             for other_cell in adj_cell_white_cells:
-                if self.lamps[other_cell] is not None:
+                if self.lamps[other_cell] is not None or self.illuminated_cells[other_cell] is True:
                     adj_cell_white_cells.remove(other_cell)
                     
             if adj_cell.number is not None and self.numbered_cell_num_lamps(adj_cell) == adj_cell.number - 1 and len(adj_cell_white_cells) == 1:
@@ -472,16 +473,45 @@ def solve(
                     if result and result.solved:
                         return result, new_depth, new_prop_iters, new_check_iters, new_backtracks, new_decision_points
                     else:
-                        backtracks += new_backtracks + 1
-                        decision_points += new_decision_points
-                        total_check_iters += new_check_iters
-                        total_prop_iters += new_prop_iters
+                        backtracks = new_backtracks + 1
+                        decision_points = new_decision_points
+                        total_check_iters = new_check_iters
+                        total_prop_iters = new_prop_iters
                 else:
                     backtracks += 1
             else: 
                 backtracks += 1
     return None, depth, total_prop_iters, total_check_iters, backtracks, decision_points
     
+def solve_basic(akari: Akari, state: SolutionState | None = None, depth:int = 0, max_depth:int|None = None) -> tuple[SolutionState | None, int]:
+    depth += 1
+    
+    if not state:
+        state = SolutionState(akari)
+        
+    unassigned_lamps = state.unassigned_lamps()
+    
+    if max_depth and depth > max_depth:
+        return None, depth
+    
+    if len(unassigned_lamps) == 0 or state.solved:
+        return state, depth
+    else:
+        for val in [True, False]:
+            new_state = copy.deepcopy(state)
+            new_state.assign_lamp_value(*unassigned_lamps[0], val)
+            new_state.is_solved()
+            if new_state.is_valid():
+                ok, check_iters = new_state.forward_check()
+                if ok:
+                    new_state.propagate_constraints()
+                    result, new_depth = solve_basic(akari, new_state, depth, max_depth)
+                    
+                    if result and result.solved:
+                        return result, new_depth, 
+                    else:
+                        depth = new_depth
+    return None, depth
     
 class AkariGenerator:
     def add_black_cells_and_clues(self, akari: Akari):
@@ -539,7 +569,7 @@ class AkariGenerator:
 
     def check_unique_solution(self, akari: Akari, ):
         initial_state = SolutionState(akari)
-        solution, solvable_depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari, max_depth=18)
+        solution, solvable_depth = solve_basic(akari, max_depth=18)
         
         if not solution:
             return False, None
@@ -549,7 +579,7 @@ class AkariGenerator:
                 test_state = copy.deepcopy(initial_state)
                 test_state.assign_lamp_value(x, y, True)
                 
-                test_state, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari, test_state, max_depth=solvable_depth+2)
+                test_state, depth = solve_basic(akari, test_state, max_depth=solvable_depth+2)
                 if test_state and test_state.solved:
                     # If the puzzle can be solved with this change, it means there's at least a second solution
                     return False, test_state
@@ -558,67 +588,69 @@ class AkariGenerator:
 
     def adjust_puzzle_for_single_solution(self, akari: Akari):
         attempts = 0
-        max_attempts = (akari.grid_size_x * akari.grid_size_y) * 4
-        
-        unique, solution = self.check_unique_solution(akari)
+        max_attempts = 50 
 
-        while not unique and attempts < max_attempts:
+        # Function to revert changes
+        def revert_changes(changes):
+            for x, y, was_black, prev_number in changes:
+                akari.cells[(x, y)].is_black = was_black
+                akari.cells[(x, y)].number = prev_number
+
+        while attempts < max_attempts:
+            attempts += 1
+            changes = []  # To track changes for potential reversion
+
+            # Randomly choose a strategy for adjustment
             strategy = random.choice(['add_black', 'remove_black', 'add_number', 'remove_number'])
-            
-            undo_state = copy.deepcopy(akari)
-            
+
             if strategy == 'add_black':
-                # Attempt to add a black cell in a position that does not currently have one
-                x, y = random.choice(list(akari.cells.keys()))
-                while akari.cells[(x, y)].is_black:
-                    x, y = random.choice(list(akari.cells.keys()))
-                akari.cells[(x, y)].is_black = True
-                akari.cells[(x, y)].number = None
+                # Find all white cells that can be turned black
+                white_cells = [(x, y) for (x, y), cell in akari.cells.items() if not cell.is_black and cell.number is None]
+                if white_cells:
+                    x, y = random.choice(white_cells)
+                    changes.append((x, y, False, akari.cells[(x, y)].number))  # Store current state for reversion
+                    akari.cells[(x, y)].is_black = True
+                    akari.cells[(x, y)].number = None  # Ensure no number on newly blackened cell
 
             elif strategy == 'remove_black':
-                # Attempt to remove a black cell (making it white)
-                black_cells = [cell for cell in akari.cells.values() if cell.is_black]
+                # Find all black cells that can be turned white
+                black_cells = [(x, y) for (x, y), cell in akari.cells.items() if cell.is_black and cell.number is None]
                 if black_cells:
-                    cell = random.choice(black_cells)
-                    cell.is_black = False
-                    cell.number = None
+                    x, y = random.choice(black_cells)
+                    changes.append((x, y, True, akari.cells[(x, y)].number))  # Store current state for reversion
+                    akari.cells[(x, y)].is_black = False
 
             elif strategy == 'add_number':
-                # Attempt to add a number to a black cell that does not have one
-                black_cells = [cell for cell in akari.cells.values() if cell.is_black and cell.number is None]
-                if black_cells:
-                    cell = random.choice(black_cells)
-                    
-                    if solution:
-                        num_lamps = solution.numbered_cell_num_lamps(cell)
-                        cell.number = num_lamps
-                    else:
-                        cell.number = random.choice([0, 1, 2, 3, 4])
+                # Find black cells without numbers
+                eligible_cells = [(x, y) for (x, y), cell in akari.cells.items() if cell.is_black and cell.number is None]
+                if eligible_cells:
+                    x, y = random.choice(eligible_cells)
+                    number = random.randint(0, 4)  # Example: choose a random number, adjust logic as needed
+                    changes.append((x, y, akari.cells[(x, y)].is_black, None))  # Store current state for reversion
+                    akari.cells[(x, y)].number = number
 
             elif strategy == 'remove_number':
-                # Attempt to remove a number from a black cell that has one
-                numbered_cells = [cell for cell in akari.cells.values() if cell.is_black and cell.number is not None]
+                # Find black cells with numbers
+                numbered_cells = [(x, y) for (x, y), cell in akari.cells.items() if cell.is_black and cell.number is not None]
                 if numbered_cells:
-                    cell = random.choice(numbered_cells)
-                    cell.number = None
+                    x, y = random.choice(numbered_cells)
+                    changes.append((x, y, akari.cells[(x, y)].is_black, akari.cells[(x, y)].number))  # Store current state for reversion
+                    akari.cells[(x, y)].number = None
 
-            attempts += 1
+            # Check if the current puzzle state has a unique solution
             unique, solution = self.check_unique_solution(akari)
-            
-            if unique and solution:
-                break
-            elif solution is None:
-                akari = undo_state
-                continue
+            if unique:
+                return True  # Puzzle successfully adjusted
+            else:
+                revert_changes(changes)  # Revert the puzzle to its previous state
 
-        if unique and solution:
-            return True
-        else: return False
+        return False  # Indicate failure if max attempts are reached
 
-    def generate_akari_puzzle(self, grid_size_x, grid_size_y):
+    def generate_akari_puzzle(self, grid_size_x, grid_size_y, difficulty=1):
+        # Difficulty is from 1 to 3
         attempts = 0
         
-        while attempts < 50:
+        while True:
             print(f'iteration {attempts}')
             attempts += 1
         
@@ -629,7 +661,7 @@ class AkariGenerator:
                 akari = Akari(grid_size_x, grid_size_y)
                 self.add_black_cells_and_clues(akari)
                 
-            solution, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari, max_depth=18)
+            solution, depth = solve_basic(akari, max_depth=18)
             
             if not solution:
                 continue
@@ -639,9 +671,14 @@ class AkariGenerator:
             unique, solution = self.check_unique_solution(akari)
             
             if unique and solution:
-                print('puzzle generated')
-                return akari
-            
-        print('puzzle generation failed')
-        return None
+                solution, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari)
+                if difficulty == 1 and ((backtracks <= 4) or (total_prop_iters > 60) or (total_check_iters <= 30)):
+                        print('puzzle generated successfully')
+                        return akari
+                elif difficulty == 2 and ((backtracks <= 8 and backtracks > 4) or (total_prop_iters <= 60 and total_prop_iters > 30) or (total_check_iters <= 50 and total_check_iters > 60)):
+                        print('puzzle generated successfully')
+                        return akari
+                elif difficulty == 3 and ((backtracks > 8) or (total_prop_iters <= 30) or (total_check_iters > 60)):
+                        print('puzzle generated successfully')
+                        return akari
         

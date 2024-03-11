@@ -89,6 +89,7 @@ class AkariEditor:
             self.master.bind(key, self.place_number_keypad)
 
     def reset_grid(self):
+        self.solution_state = None
         self.akari.reset_cells()
         for cell in self.akari.cells.values():
             cell.highlight_rect = None
@@ -245,79 +246,15 @@ class AkariEditor:
             self.solution_state = solution
             self.draw_solution()
         else:
-            print(f'failed after {depth} steps')
+            print(f'failed to solve puzzle')
         
     def new_akari(self):
-        akari = AkariGenerator().generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y)
-        self.akari = akari if akari else self.akari
-        self.redraw_all()
-        
-    
-    def solve_step(self, akari: Akari, state: SolutionState | None) -> SolutionState | None:
-        if not state:
-            state = SolutionState(akari)
-        unassigned_lamps = state.unassigned_lamps()
-        if len(unassigned_lamps) == 0 or state.solved:
-            return state
-        else:
-            for val in [True, False]:
-                new_state = copy.deepcopy(state)
-                print('took next step')
-                new_state.assign_lamp_value(*unassigned_lamps[0], val)
-                new_state.is_solved()
-                if new_state.is_valid():
-                    self.solution_state = new_state
-                    self.redraw_all()
-                    self.draw_solution()
-                    input()
-                    ok = new_state.forward_check()
-                    if ok:
-                        self.do_propogate_constrains()
-                        input()
-                        new_state = self.solve_step(akari, new_state)
-                        if new_state and new_state.solved:
-                            return new_state
-                    else:
-                        continue
-        return None
-    
-    def propagate_constraints(self,):
-        if self.solution_state:
-            changes_made = True
-            while changes_made:
-                print('propagating')
-                changes_made = False
-                change_made = ''
-                for cell in self.akari.cells.values():
-                    if cell.is_black or self.solution_state.lamps[cell.coords()] is not None:
-                        continue
-                    
-                    must_have_lamp, cannot_have_lamp = self.solution_state.check_cell_constraints(cell)
-                    if must_have_lamp:
-                        self.solution_state.assign_lamp_value(cell.x, cell.y, True)
-                        if self.solution_state.is_valid():
-                            changes_made = True
-                            change_made = f'assigned lamp to {cell.coords()}'
-                            break
-                        else:
-                            self.solution_state.assign_lamp_value(cell.x, cell.y, None)
-                    elif cannot_have_lamp:
-                        self.solution_state.assign_lamp_value(*cell.coords(), False)
-                        if self.solution_state.is_valid():
-                            changes_made = True
-                            change_made = f'assigned no lamp to {cell.coords()}'
-                            break
-                        else:
-                            self.solution_state.assign_lamp_value(cell.x, cell.y, None)
-                # print(change_made)
-                # self.redraw_all()
-                # self.draw_solution()
-                # input()
-        
-    def do_propogate_constrains(self):
-        self.propagate_constraints()
-        self.redraw_all()
-        self.draw_solution()
+        self.remove_solution()
+        difficulty = simpledialog.askinteger("Input", "Enter difficulty (1-3):", parent=self.master, minvalue=1, maxvalue=3)
+        if difficulty:
+            akari = AkariGenerator().generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y, difficulty)
+            self.akari = akari if akari else self.akari
+            self.redraw_all()
             
     def draw_solution(self):
         self.redraw_all()
