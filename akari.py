@@ -581,7 +581,6 @@ class AkariGenerator:
                 
                 test_state, depth = solve_basic(akari, test_state, max_depth=solvable_depth+2)
                 if test_state and test_state.solved:
-                    print('failed for', x, y)
                     # If the puzzle can be solved with this change, it means there's at least a second solution
                     return False, test_state
 

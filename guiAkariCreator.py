@@ -256,7 +256,7 @@ class AkariEditor:
         self.solution_state = solution
         self.redraw_all()
         self.draw_solution()
-        print(f'if solution unique: {unique}')
+        print(f'is solution unique: {unique}')
         
     def new_akari(self):
         self.remove_solution()
