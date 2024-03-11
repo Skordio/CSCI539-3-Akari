@@ -239,7 +239,7 @@ class AkariEditor:
     def solve_push(self):
         if self.solution_state:
             self.remove_solution()
-        solution, depth = solve(self.akari, None)
+        solution, depth = solve(self.akari)
         if solution:
             print(f'solved in {depth} steps')
             self.solution_state = solution

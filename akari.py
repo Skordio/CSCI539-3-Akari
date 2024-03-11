@@ -413,7 +413,7 @@ class SolutionState:
         return False
     
     
-def solve(akari: Akari, state: SolutionState | None, depth:int = 0, max_depth:int|None = None) -> tuple[SolutionState | None, int]:
+def solve(akari: Akari, state: SolutionState | None = None, depth:int = 0, max_depth:int|None = None) -> tuple[SolutionState | None, int]:
     depth += 1
     if max_depth and depth > max_depth:
         return None, depth
@@ -502,63 +502,48 @@ def lamps_must_intersect(akari: Akari):
     return False
            
     
-def check_unique_solution(akari: Akari):
-    print('check unique solution called')
-    # Attempt to solve the puzzle using the existing solve function
+def check_unique_solution(akari: Akari, ):
     initial_state = SolutionState(akari)
-    solved_state, depth = solve(akari, initial_state, 0, 25)
+    solution, solvable_depth = solve(akari, max_depth=20)
     
-    if solved_state is None or not solved_state.solved:
-        print(f'failed after {depth} iterations')
-        # If the puzzle cannot be solved, then it definitely does not have a unique solution
-        return False
-    print(f'succeeded after {depth} iterations')
+    if not solution:
+        return False, None
     
-    # Assuming the solve function attempts all possibilities and backtracks,
-    # we can further verify the uniqueness by ensuring that no cell that can hold a lamp
-    # has been left untested for both having and not having a lamp in the final solution.
-    
-    # A way to check this (though computationally intensive) is to attempt to place a lamp
-    # in any of the cells not having a lamp in the solved state, and see if the puzzle still has a valid solution.
-    for x, y in initial_state.lamps.keys():
-        if solved_state.lamps[(x, y)] is None:
-            # Temporarily place a lamp and check if the puzzle is still solvable
-            test_state = copy.deepcopy(solved_state)
+    for x, y in initial_state.unassigned_lamps():
+        if not solution.lamps[(x, y)]:
+            test_state = copy.deepcopy(initial_state)
             test_state.assign_lamp_value(x, y, True)
-            if test_state.is_valid():
-                # If placing a lamp here doesn't immediately break the rules,
-                # attempt to solve the puzzle again from this state.
-                test_state, depth = solve(akari, test_state)
-                if test_state and test_state.solved:
-                    # If the puzzle can be solved with this change, it means there's at least a second solution
-                    return False
-    
-    # If we've gone through all possibilities and found no alternative solutions,
-    # we can be reasonably confident the puzzle has a unique solution.
-    return True
+            
+            test_state, depth = solve(akari, test_state, max_depth=solvable_depth)
+            if test_state and test_state.solved:
+                # If the puzzle can be solved with this change, it means there's at least a second solution
+                return False, test_state
+
+    return True, solution
 
 
 def adjust_puzzle_for_single_solution(akari: Akari):
-    # This function assumes that the puzzle currently does not have a unique solution
-    # and attempts to adjust it to meet this criterion.
-
     attempts = 0
-    max_attempts = 50  # Prevent infinite loops
+    max_attempts = 100
+    
+    unique, solution = check_unique_solution(akari)
 
-    while not check_unique_solution(akari) and attempts < max_attempts:
-        # Randomly choose a strategy to adjust the puzzle
+    while not unique and attempts < max_attempts:
         strategy = random.choice(['add_black', 'remove_black', 'add_number', 'remove_number'])
+        
+        undo_state = copy.deepcopy(akari)
         
         if strategy == 'add_black':
             # Attempt to add a black cell in a position that does not currently have one
             x, y = random.choice(list(akari.cells.keys()))
-            if not akari.cells[(x, y)].is_black and akari.cells[(x, y)].number is None:
-                akari.cells[(x, y)].is_black = True
-                akari.cells[(x, y)].number = None
+            while akari.cells[(x, y)].is_black:
+                x, y = random.choice(list(akari.cells.keys()))
+            akari.cells[(x, y)].is_black = True
+            akari.cells[(x, y)].number = None
 
         elif strategy == 'remove_black':
             # Attempt to remove a black cell (making it white)
-            black_cells = [cell for cell in akari.cells.values() if cell.is_black and cell.number is None]
+            black_cells = [cell for cell in akari.cells.values() if cell.is_black]
             if black_cells:
                 cell = random.choice(black_cells)
                 cell.is_black = False
@@ -569,9 +554,12 @@ def adjust_puzzle_for_single_solution(akari: Akari):
             black_cells = [cell for cell in akari.cells.values() if cell.is_black and cell.number is None]
             if black_cells:
                 cell = random.choice(black_cells)
-                # Calculate the number based on adjacent lamps in the solution state
-                # This step is simplified and assumes there's a way to know the solution state's lamp positions
-                cell.number = random.randint(1, 4)  # Simplification; should be based on actual adjacent lamps
+                
+                if solution:
+                    num_lamps = solution.numbered_cell_num_lamps(cell)
+                    cell.number = num_lamps
+                else:
+                    cell.number = random.choice([0, 1, 2, 3, 4])
 
         elif strategy == 'remove_number':
             # Attempt to remove a number from a black cell that has one
@@ -581,21 +569,24 @@ def adjust_puzzle_for_single_solution(akari: Akari):
                 cell.number = None
 
         attempts += 1
+        unique, solution = check_unique_solution(akari)
+        
+        if solution is None:
+            akari = undo_state
+            continue
 
     if attempts >= max_attempts:
-        print("Failed to adjust the puzzle to have a unique solution after maximum attempts.")
         return False
     else:
-        print("Puzzle adjusted successfully to have a unique solution.")
         return True
 
 
 def generate_akari_puzzle(grid_size_x, grid_size_y):
     good_puzzle = False
-    good_puzzle_attempts = 10
+    good_puzzle_attempts = 50
     
     while not good_puzzle and good_puzzle_attempts > 0:
-        print(f'outside loop iteration {11-good_puzzle_attempts}')
+        print(f'outside loop iteration {51-good_puzzle_attempts}')
         good_puzzle_attempts -= 1
     
         akari = Akari(grid_size_x, grid_size_y)
@@ -605,15 +596,20 @@ def generate_akari_puzzle(grid_size_x, grid_size_y):
             akari = Akari(grid_size_x, grid_size_y)
             add_black_cells_and_clues(akari)
             
-        solution, depth = solve(akari, None, 0, 25)
+        print('attempting to solve')
+        solution, depth = solve(akari, max_depth=20)
         
         if not solution:
+            print('no solution found')
             continue
         else:
-            good_puzzle = adjust_puzzle_for_single_solution(akari)
+            print(f'is solvable after {depth} iterations')
+            good_puzzle = adjust_puzzle_for_single_solution(akari,)
     
     if not good_puzzle:
+        print('puzzle not generated')
         return None
     else:
+        print('puzzle generated')
         return akari
     
