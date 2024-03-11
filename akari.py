@@ -672,13 +672,13 @@ class AkariGenerator:
             
             if unique and solution:
                 solution, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari)
-                if difficulty == 1 and ((backtracks <= 4) or (total_prop_iters > 60) or (total_check_iters <= 30)):
+                if difficulty == 1 and ((backtracks <= 4) or (total_check_iters <= 30)):
                         print('puzzle generated successfully')
                         return akari
-                elif difficulty == 2 and ((backtracks <= 8 and backtracks > 4) or (total_prop_iters <= 60 and total_prop_iters > 30) or (total_check_iters <= 50 and total_check_iters > 60)):
+                elif difficulty == 2 and ((backtracks <= 8 and backtracks > 4) or (total_check_iters <= 60 and total_check_iters > 30)):
                         print('puzzle generated successfully')
                         return akari
-                elif difficulty == 3 and ((backtracks > 8) or (total_prop_iters <= 30) or (total_check_iters > 60)):
+                elif difficulty == 3 and ((backtracks > 8) or (total_check_iters > 60)):
                         print('puzzle generated successfully')
                         return akari
         

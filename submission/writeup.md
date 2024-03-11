@@ -16,8 +16,7 @@ Once you are in the program, you can use the generate button to create a new puz
 
 To measure the difficulty of any given Akari puzzle to solve, I recorded several metrics from the solver function: 
 
-- Total times propogation of constraints was used
 - Total times forward checking was used
 - Total times backtracking was used
 
-I used these metrics to gauge how difficult the puzzle might be for a human to solve. More backtracking means the puzzle is harder, less constraint propogation means the puzzle is harder, and more forward checking required means the puzzle is harder. 
+I used these metrics to gauge how difficult the puzzle might be for a human to solve. More backtracking means the puzzle is harder, and more forward checking required means the puzzle is harder. 
