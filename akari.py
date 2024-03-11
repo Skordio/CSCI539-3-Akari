@@ -166,6 +166,7 @@ class SolutionState:
     solved = bool
     illuminated_cells: dict[tuple[int, int], bool]
     akari: Akari
+    initial_propogation_iterations: int
     
     def __init__(self, akari: Akari, print_debug=False, auto_find_cells_that_must_have_lamps=True):
         self.lamps = {(x, y): None for x in range(akari.grid_size_x) for y in range(akari.grid_size_y)}
@@ -175,13 +176,20 @@ class SolutionState:
             if cell.is_black:
                 self.lamps[(cell.x, cell.y)] = False
                 
+        prop_iters = 0
         if auto_find_cells_that_must_have_lamps:
             cells_that_must_have_lamps = self.cells_that_must_have_lamps()
             if print_debug:
                 print(f'{len(cells_that_must_have_lamps)} cells must have lamps')
             for cell in cells_that_must_have_lamps:
                 self.assign_lamp_value(*cell, True)
-            self.propagate_constraints()
+                prop_iters += 1
+            prop_iters += self.propagate_constraints()
+            if print_debug:
+                print(f'initial prop iters: {prop_iters}')
+
+        self.initial_propogation_iterations = prop_iters
+
         self.solved = False
         
     def __str__(self):
@@ -292,7 +300,6 @@ class SolutionState:
                 must_have_lamp = True
         
         return must_have_lamp
-        
             
     def numbered_cell_num_lamps(self, cell:Cell):
         lamp_count = 0
@@ -675,12 +682,12 @@ class AkariGenerator:
             if unique and solution:
                 solution, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari)
                 if difficulty == 1 and ((backtracks <= 5) or (depth <= 10) or (decision_points <= 10)):
-                        print('puzzle generated successfully')
+                        print(f'puzzle generated successfully for score {difficulty}')
                         return akari
                 elif difficulty == 2 and ((backtracks <= 8 and backtracks > 5) or (depth <= 15 and depth > 10) or (decision_points <= 15 and decision_points > 10)):
-                        print('puzzle generated successfully')
+                        print(f'puzzle generated successfully for score {difficulty}')
                         return akari
                 elif difficulty == 3 and ((backtracks > 8) or (depth > 15) or (decision_points > 15)):
-                        print('puzzle generated successfully')
+                        print(f'puzzle generated successfully for score {difficulty}')
                         return akari
         
