@@ -437,174 +437,171 @@ def solve(akari: Akari, state: SolutionState | None = None, depth:int = 0, max_d
     return None, depth, total_prop_iters, total_check_iters
     
     
-def add_black_cells_and_clues(akari: Akari):
-    # This function assumes that a solved grid has been generated and
-    # aims to modify it to create an Akari puzzle.
-    num_black_cells = random.randint(akari.grid_size_x * akari.grid_size_y // 8, akari.grid_size_x * akari.grid_size_y // 3)
-    
-    # A simple strategy: turn some cells black around lamps and add clues
-    for i in range(num_black_cells):
-        x = random.randint(0, akari.grid_size_x - 1)
-        y = random.randint(0, akari.grid_size_y - 1)
+class AkariGenerator:
+    def add_black_cells_and_clues(self, akari: Akari):
+        # This function assumes that a solved grid has been generated and
+        # aims to modify it to create an Akari puzzle.
+        num_black_cells = random.randint(akari.grid_size_x * akari.grid_size_y // 8, akari.grid_size_x * akari.grid_size_y // 3)
         
-        cell_cannot_be_black = False
-        
-        # Skip if placing a black cell here would make another black cell's constrain to be impossible to satisfy
-        adjacent_black_cells = [cell for cell in akari.cells[(x, y)].adjacent_cells() if akari.cells[cell].is_black]
-        for cell in adjacent_black_cells:
-            cell = akari.cells[cell]
-            cell_neighbors = cell.adjacent_cells(white_only=True)
-            if len(cell_neighbors) == cell.number:
-                cell_cannot_be_black = True
-                break
+        # A simple strategy: turn some cells black around lamps and add clues
+        for i in range(num_black_cells):
+            x = random.randint(0, akari.grid_size_x - 1)
+            y = random.randint(0, akari.grid_size_y - 1)
             
-        # Skip if the cell is already black
-        if (x, y) in akari.numbered_cells():
-            cell_cannot_be_black = True
-        
-        if cell_cannot_be_black:
-            i += 1
-            continue
-        
-        akari.cells[(x, y)].is_black = True
-        
-        # Randomly decide whether to add a clue (a number) or not
-        if random.choice([True, False]):
-            while True:
-                number = random.choice([0, 1, 1, 2, 2, 3, 3, 4])
-                cell_neighbors = akari.cells[(x, y)].adjacent_cells(white_only=True)
-                if len(cell_neighbors) < number:
-                    continue
-                else:
+            cell_cannot_be_black = False
+            
+            # Skip if placing a black cell here would make another black cell's constrain to be impossible to satisfy
+            adjacent_black_cells = [cell for cell in akari.cells[(x, y)].adjacent_cells() if akari.cells[cell].is_black]
+            for cell in adjacent_black_cells:
+                cell = akari.cells[cell]
+                cell_neighbors = cell.adjacent_cells(white_only=True)
+                if len(cell_neighbors) == cell.number:
+                    cell_cannot_be_black = True
                     break
-            akari.cells[(x, y)].number = number  
-            
-            
-def lamps_must_intersect(akari: Akari):
-    solution = SolutionState(akari)
-    numbered_cells = [cell for cell in akari.cells.values() if cell.number is not None]
-    cells_that_must_have_lamps:list[tuple[int, int]] = []
-    
-    for cell in numbered_cells:
-        white_neighbors = cell.adjacent_cells(white_only=True)
-        if len(white_neighbors) == cell.number:
-            cells_that_must_have_lamps.extend(white_neighbors)
-            
-    for cell in cells_that_must_have_lamps:
-        solution.assign_lamp_value(*cell, True)
-        if not solution.is_valid():
-            return True
-    
-    return False
-           
-    
-def check_unique_solution(akari: Akari, ):
-    initial_state = SolutionState(akari)
-    solution, solvable_depth, max_prop_iters, max_check_iters = solve(akari, max_depth=18)
-    
-    if not solution:
-        return False, None
-    
-    for x, y in initial_state.unassigned_lamps():
-        if not solution.lamps[(x, y)]:
-            test_state = copy.deepcopy(initial_state)
-            test_state.assign_lamp_value(x, y, True)
-            
-            test_state, depth, max_prop_iters, max_check_iters = solve(akari, test_state, max_depth=solvable_depth+2)
-            if test_state and test_state.solved:
-                # If the puzzle can be solved with this change, it means there's at least a second solution
-                return False, test_state
-
-    return True, solution
-
-
-def adjust_puzzle_for_single_solution(akari: Akari):
-    attempts = 0
-    max_attempts = (akari.grid_size_x * akari.grid_size_y) * 4
-    
-    unique, solution = check_unique_solution(akari)
-
-    while not unique and attempts < max_attempts:
-        strategy = random.choice(['add_black', 'remove_black', 'add_number', 'remove_number'])
-        
-        undo_state = copy.deepcopy(akari)
-        
-        if strategy == 'add_black':
-            # Attempt to add a black cell in a position that does not currently have one
-            x, y = random.choice(list(akari.cells.keys()))
-            while akari.cells[(x, y)].is_black:
-                x, y = random.choice(list(akari.cells.keys()))
-            akari.cells[(x, y)].is_black = True
-            akari.cells[(x, y)].number = None
-
-        elif strategy == 'remove_black':
-            # Attempt to remove a black cell (making it white)
-            black_cells = [cell for cell in akari.cells.values() if cell.is_black]
-            if black_cells:
-                cell = random.choice(black_cells)
-                cell.is_black = False
-                cell.number = None
-
-        elif strategy == 'add_number':
-            # Attempt to add a number to a black cell that does not have one
-            black_cells = [cell for cell in akari.cells.values() if cell.is_black and cell.number is None]
-            if black_cells:
-                cell = random.choice(black_cells)
                 
-                if solution:
-                    num_lamps = solution.numbered_cell_num_lamps(cell)
-                    cell.number = num_lamps
-                else:
-                    cell.number = random.choice([0, 1, 2, 3, 4])
-
-        elif strategy == 'remove_number':
-            # Attempt to remove a number from a black cell that has one
-            numbered_cells = [cell for cell in akari.cells.values() if cell.is_black and cell.number is not None]
-            if numbered_cells:
-                cell = random.choice(numbered_cells)
-                cell.number = None
-
-        attempts += 1
-        unique, solution = check_unique_solution(akari)
-        
-        if unique and solution:
-            break
-        elif solution is None:
-            akari = undo_state
-            continue
-
-    if unique and solution:
-        return True
-    else: return False
-
-
-def generate_akari_puzzle(grid_size_x, grid_size_y):
-    attempts = 0
-    
-    while attempts < 50:
-        print(f'iteration {attempts}')
-        attempts += 1
-    
-        akari = Akari(grid_size_x, grid_size_y)
-        add_black_cells_and_clues(akari)
-        
-        while lamps_must_intersect(akari):
-            akari = Akari(grid_size_x, grid_size_y)
-            add_black_cells_and_clues(akari)
+            # Skip if the cell is already black
+            if (x, y) in akari.numbered_cells():
+                cell_cannot_be_black = True
             
-        solution, depth, max_prop_iters, max_check_iters = solve(akari, max_depth=18)
+            if cell_cannot_be_black:
+                i += 1
+                continue
+            
+            akari.cells[(x, y)].is_black = True
+            
+            # Randomly decide whether to add a clue (a number) or not
+            if random.choice([True, False]):
+                while True:
+                    number = random.choice([0, 1, 1, 2, 2, 3, 3, 4])
+                    cell_neighbors = akari.cells[(x, y)].adjacent_cells(white_only=True)
+                    if len(cell_neighbors) < number:
+                        continue
+                    else:
+                        break
+                akari.cells[(x, y)].number = number  
+
+    def lamps_must_intersect(self, akari: Akari):
+        solution = SolutionState(akari)
+        numbered_cells = [cell for cell in akari.cells.values() if cell.number is not None]
+        cells_that_must_have_lamps:list[tuple[int, int]] = []
+        
+        for cell in numbered_cells:
+            white_neighbors = cell.adjacent_cells(white_only=True)
+            if len(white_neighbors) == cell.number:
+                cells_that_must_have_lamps.extend(white_neighbors)
+                
+        for cell in cells_that_must_have_lamps:
+            solution.assign_lamp_value(*cell, True)
+            if not solution.is_valid():
+                return True
+        
+        return False
+
+    def check_unique_solution(self, akari: Akari, ):
+        initial_state = SolutionState(akari)
+        solution, solvable_depth, max_prop_iters, max_check_iters = solve(akari, max_depth=18)
         
         if not solution:
-            continue
-        else:
-            adjust_puzzle_for_single_solution(akari,)
+            return False, None
         
-        unique, solution = check_unique_solution(akari)
+        for x, y in initial_state.unassigned_lamps():
+            if not solution.lamps[(x, y)]:
+                test_state = copy.deepcopy(initial_state)
+                test_state.assign_lamp_value(x, y, True)
+                
+                test_state, depth, max_prop_iters, max_check_iters = solve(akari, test_state, max_depth=solvable_depth+2)
+                if test_state and test_state.solved:
+                    # If the puzzle can be solved with this change, it means there's at least a second solution
+                    return False, test_state
+
+        return True, solution
+
+    def adjust_puzzle_for_single_solution(self, akari: Akari):
+        attempts = 0
+        max_attempts = (akari.grid_size_x * akari.grid_size_y) * 4
         
+        unique, solution = self.check_unique_solution(akari)
+
+        while not unique and attempts < max_attempts:
+            strategy = random.choice(['add_black', 'remove_black', 'add_number', 'remove_number'])
+            
+            undo_state = copy.deepcopy(akari)
+            
+            if strategy == 'add_black':
+                # Attempt to add a black cell in a position that does not currently have one
+                x, y = random.choice(list(akari.cells.keys()))
+                while akari.cells[(x, y)].is_black:
+                    x, y = random.choice(list(akari.cells.keys()))
+                akari.cells[(x, y)].is_black = True
+                akari.cells[(x, y)].number = None
+
+            elif strategy == 'remove_black':
+                # Attempt to remove a black cell (making it white)
+                black_cells = [cell for cell in akari.cells.values() if cell.is_black]
+                if black_cells:
+                    cell = random.choice(black_cells)
+                    cell.is_black = False
+                    cell.number = None
+
+            elif strategy == 'add_number':
+                # Attempt to add a number to a black cell that does not have one
+                black_cells = [cell for cell in akari.cells.values() if cell.is_black and cell.number is None]
+                if black_cells:
+                    cell = random.choice(black_cells)
+                    
+                    if solution:
+                        num_lamps = solution.numbered_cell_num_lamps(cell)
+                        cell.number = num_lamps
+                    else:
+                        cell.number = random.choice([0, 1, 2, 3, 4])
+
+            elif strategy == 'remove_number':
+                # Attempt to remove a number from a black cell that has one
+                numbered_cells = [cell for cell in akari.cells.values() if cell.is_black and cell.number is not None]
+                if numbered_cells:
+                    cell = random.choice(numbered_cells)
+                    cell.number = None
+
+            attempts += 1
+            unique, solution = self.check_unique_solution(akari)
+            
+            if unique and solution:
+                break
+            elif solution is None:
+                akari = undo_state
+                continue
+
         if unique and solution:
-            print('puzzle generated')
-            return akari
+            return True
+        else: return False
+
+    def generate_akari_puzzle(self, grid_size_x, grid_size_y):
+        attempts = 0
         
-    print('puzzle generation failed')
-    return None
-    
+        while attempts < 50:
+            print(f'iteration {attempts}')
+            attempts += 1
+        
+            akari = Akari(grid_size_x, grid_size_y)
+            self.add_black_cells_and_clues(akari)
+            
+            while self.lamps_must_intersect(akari):
+                akari = Akari(grid_size_x, grid_size_y)
+                self.add_black_cells_and_clues(akari)
+                
+            solution, depth, max_prop_iters, max_check_iters = solve(akari, max_depth=18)
+            
+            if not solution:
+                continue
+            else:
+                self.adjust_puzzle_for_single_solution(akari,)
+            
+            unique, solution = self.check_unique_solution(akari)
+            
+            if unique and solution:
+                print('puzzle generated')
+                return akari
+            
+        print('puzzle generation failed')
+        return None
+        

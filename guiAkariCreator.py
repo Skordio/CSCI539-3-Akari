@@ -3,7 +3,7 @@ import random, copy, time
 from tkinter import simpledialog
 from argparse import ArgumentParser
 
-from akari import Cell, Akari, SolutionState, solve, generate_akari_puzzle
+from akari import Cell, Akari, SolutionState, solve, AkariGenerator
 
 class AkariEditor:
     solution_state: SolutionState | None
@@ -248,7 +248,7 @@ class AkariEditor:
             print(f'failed after {depth} steps')
         
     def new_akari(self):
-        akari = generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y)
+        akari = AkariGenerator().generate_akari_puzzle(self.akari.grid_size_x, self.akari.grid_size_y)
         self.akari = akari if akari else self.akari
         self.redraw_all()
         
