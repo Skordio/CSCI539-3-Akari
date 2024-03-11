@@ -85,6 +85,17 @@ class Akari:
             if cell.number is not None and cell.number > 0:
                 cells.update(cell.adjacent_cells(white_only=True))
         return list(cells)
+    
+    def cells_that_must_have_lamps(self) -> list[tuple[int, int]]:
+        numbered_cells = [cell for cell in self.cells.values() if cell.number is not None]
+        cells_that_must_have_lamps:list[tuple[int, int]] = []
+        
+        for cell in numbered_cells:
+            white_neighbors = cell.adjacent_cells(white_only=True)
+            if len(white_neighbors) == cell.number:
+                cells_that_must_have_lamps.extend(white_neighbors)
+        
+        return cells_that_must_have_lamps
 
     def load_from_file(self, filename):
         filename = os.path.normpath(filename)
@@ -160,13 +171,19 @@ class SolutionState:
     illuminated_cells: dict[tuple[int, int], bool]
     akari: Akari
     
-    def __init__(self, akari: Akari):
+    def __init__(self, akari: Akari, print_debug=False):
         self.lamps = {(x, y): None for x in range(akari.grid_size_x) for y in range(akari.grid_size_y)}
         self.illuminated_cells = {(x, y): False for x in range(akari.grid_size_x) for y in range(akari.grid_size_y)}
         self.akari = akari
         for cell in akari.cells.values():
             if cell.is_black:
                 self.lamps[(cell.x, cell.y)] = False
+                
+        cells_that_must_have_lamps = self.cells_that_must_have_lamps()
+        if print_debug:
+            print(f'{len(cells_that_must_have_lamps)} cells must have lamps')
+        for cell in cells_that_must_have_lamps:
+            self.assign_lamp_value(*cell, True)
         self.solved = False
         
     def __str__(self):
@@ -184,6 +201,12 @@ class SolutionState:
                     the_rest.append(key)
         return unassigned_high_priority + the_rest
         
+    def cells_that_must_have_lamps(self) -> list[tuple[int, int]]:
+        cells = self.akari.cells_that_must_have_lamps()
+        for cell in cells:
+            if self.lamps[cell]:
+                cells.remove(cell)
+        return cells
             
     def assigned_lamps(self, only_true=True):
         return  [key for key in self.lamps if self.lamps[key] is not None and self.lamps[key] is True] if only_true \
@@ -405,19 +428,31 @@ class SolutionState:
         return False
     
     
-def solve(akari: Akari, state: SolutionState | None = None, depth:int = 0, max_depth:int|None = None, total_prop_iters = 0, total_check_iters = 0) -> tuple[SolutionState | None, int, int, int]:
+def solve(
+    
+            akari: Akari, \
+            state: SolutionState | None = None, \
+            depth:int = 0, max_depth:int|None = None, \
+            total_prop_iters = 0, \
+            total_check_iters = 0, \
+            backtracks = 0, \
+            decision_points = 0 \
+    
+    ) -> tuple[SolutionState | None, int, int, int, int, int]:
     depth += 1
     
     if not state:
         state = SolutionState(akari)
         
     unassigned_lamps = state.unassigned_lamps()
+    if len(unassigned_lamps) > 1:  # More than one choice counts as a decision point
+        decision_points += 1
     
     if max_depth and depth > max_depth:
-        return None, depth, total_prop_iters, total_check_iters
+        return None, depth, total_prop_iters, total_check_iters, backtracks, decision_points
     
     if len(unassigned_lamps) == 0 or state.solved:
-        return state, depth, total_prop_iters, total_check_iters
+        return state, depth, total_prop_iters, total_check_iters, backtracks, decision_points
     else:
         for val in [True, False]:
             new_state = copy.deepcopy(state)
@@ -427,14 +462,25 @@ def solve(akari: Akari, state: SolutionState | None = None, depth:int = 0, max_d
                 ok, check_iters = new_state.forward_check()
                 if ok:
                     prop_iters = new_state.propagate_constraints()
-                    new_state, new_depth, new_prop_iters, new_check_iters = solve(akari, new_state, depth, max_depth, total_prop_iters=total_prop_iters + prop_iters, total_check_iters=total_check_iters + check_iters)
-                    if new_state and new_state.solved:
-                        return new_state, new_depth, new_prop_iters, new_check_iters
-                    elif max_depth and new_depth > max_depth:
-                        return None, new_depth, new_prop_iters, new_check_iters
+                    result, new_depth, new_prop_iters, new_check_iters, new_backtracks, new_decision_points = solve(
+                            akari, new_state, depth, max_depth, \
+                            total_prop_iters=total_prop_iters + prop_iters, \
+                            total_check_iters=total_check_iters + check_iters, \
+                            backtracks=backtracks, \
+                            decision_points=decision_points \
+                        )
+                    if result and result.solved:
+                        return result, new_depth, new_prop_iters, new_check_iters, new_backtracks, new_decision_points
+                    else:
+                        backtracks += new_backtracks + 1
+                        decision_points += new_decision_points
+                        total_check_iters += new_check_iters
+                        total_prop_iters += new_prop_iters
                 else:
-                    continue
-    return None, depth, total_prop_iters, total_check_iters
+                    backtracks += 1
+            else: 
+                backtracks += 1
+    return None, depth, total_prop_iters, total_check_iters, backtracks, decision_points
     
     
 class AkariGenerator:
@@ -482,13 +528,7 @@ class AkariGenerator:
 
     def lamps_must_intersect(self, akari: Akari):
         solution = SolutionState(akari)
-        numbered_cells = [cell for cell in akari.cells.values() if cell.number is not None]
-        cells_that_must_have_lamps:list[tuple[int, int]] = []
-        
-        for cell in numbered_cells:
-            white_neighbors = cell.adjacent_cells(white_only=True)
-            if len(white_neighbors) == cell.number:
-                cells_that_must_have_lamps.extend(white_neighbors)
+        cells_that_must_have_lamps = akari.cells_that_must_have_lamps()
                 
         for cell in cells_that_must_have_lamps:
             solution.assign_lamp_value(*cell, True)
@@ -499,7 +539,7 @@ class AkariGenerator:
 
     def check_unique_solution(self, akari: Akari, ):
         initial_state = SolutionState(akari)
-        solution, solvable_depth, max_prop_iters, max_check_iters = solve(akari, max_depth=18)
+        solution, solvable_depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari, max_depth=18)
         
         if not solution:
             return False, None
@@ -509,7 +549,7 @@ class AkariGenerator:
                 test_state = copy.deepcopy(initial_state)
                 test_state.assign_lamp_value(x, y, True)
                 
-                test_state, depth, max_prop_iters, max_check_iters = solve(akari, test_state, max_depth=solvable_depth+2)
+                test_state, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari, test_state, max_depth=solvable_depth+2)
                 if test_state and test_state.solved:
                     # If the puzzle can be solved with this change, it means there's at least a second solution
                     return False, test_state
@@ -589,7 +629,7 @@ class AkariGenerator:
                 akari = Akari(grid_size_x, grid_size_y)
                 self.add_black_cells_and_clues(akari)
                 
-            solution, depth, max_prop_iters, max_check_iters = solve(akari, max_depth=18)
+            solution, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari, max_depth=18)
             
             if not solution:
                 continue

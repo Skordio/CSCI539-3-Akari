@@ -239,9 +239,9 @@ class AkariEditor:
     def solve_push(self):
         if self.solution_state:
             self.remove_solution()
-        solution, depth, max_prop_iters, max_check_iters = solve(self.akari)
+        solution, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(self.akari)
         if solution:
-            print(f'solved in {depth} steps with {max_prop_iters} propogation iterations and {max_check_iters} forward check iterations')
+            print(f'solved in {depth} steps with {total_prop_iters} propogation iterations and {total_check_iters} forward check iterations and {backtracks} backtracks and {decision_points} decision points')
             self.solution_state = solution
             self.draw_solution()
         else:

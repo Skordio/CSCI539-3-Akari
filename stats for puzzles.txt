@@ -1,9 +1,24 @@
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_486394 
-solved in 15 steps with 36 propogation iterations and 206 forward check iterations
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_486394
+solved in 15 steps with 36 propogation iterations and 206 forward check iterations and 2 backtracks and 13 decision points
 PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_3369891
-solved in 10 steps with 37 propogation iterations and 119 forward check iterations
+solved in 10 steps with 37 propogation iterations and 119 forward check iterations and 0 backtracks and 8 decision points
 PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_3770618
-solved in 8 steps with 41 propogation iterations and 102 forward check iterations
+solved in 8 steps with 41 propogation iterations and 102 forward check iterations and 0 backtracks and 6 decision points
 PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_7169120
-solved in 12 steps with 40 propogation iterations and 163 forward check iterations
+solved in 12 steps with 40 propogation iterations and 163 forward check iterations and 1 backtracks and 10 decision points
 
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\normal_light_up_0394015
+solved in 9 steps with 41 propogation iterations and 72 forward check iterations and 3 backtracks and 7 decision points
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\normal_light_up_4088824
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\normal_light_up_5090719
+solved in 13 steps with 37 propogation iterations and 187 forward check iterations and 3 backtracks and 11 decision points
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\normal_light_up_9270718
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\hard_light_up_0562806
+solved in 10 steps with 41 propogation iterations and 113 forward check iterations and 0 backtracks and 8 decision points
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\hard_light_up_1614098
+solved in 10 steps with 37 propogation iterations and 138 forward check iterations and 1 backtracks and 8 decision points
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\hard_light_up_4383497
+solved in 11 steps with 41 propogation iterations and 168 forward check iterations and 1 backtracks and 9 decision points
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\hard_light_up_4848983
+solved in 9 steps with 37 propogation iterations and 101 forward check iterations and 2 backtracks and 7 decision points
