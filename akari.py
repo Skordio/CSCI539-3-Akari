@@ -171,7 +171,7 @@ class SolutionState:
     illuminated_cells: dict[tuple[int, int], bool]
     akari: Akari
     
-    def __init__(self, akari: Akari, print_debug=False):
+    def __init__(self, akari: Akari, print_debug=False, auto_find_cells_that_must_have_lamps=True):
         self.lamps = {(x, y): None for x in range(akari.grid_size_x) for y in range(akari.grid_size_y)}
         self.illuminated_cells = {(x, y): False for x in range(akari.grid_size_x) for y in range(akari.grid_size_y)}
         self.akari = akari
@@ -179,12 +179,13 @@ class SolutionState:
             if cell.is_black:
                 self.lamps[(cell.x, cell.y)] = False
                 
-        cells_that_must_have_lamps = self.cells_that_must_have_lamps()
-        if print_debug:
-            print(f'{len(cells_that_must_have_lamps)} cells must have lamps')
-        for cell in cells_that_must_have_lamps:
-            self.assign_lamp_value(*cell, True)
-        self.propagate_constraints()
+        if auto_find_cells_that_must_have_lamps:
+            cells_that_must_have_lamps = self.cells_that_must_have_lamps()
+            if print_debug:
+                print(f'{len(cells_that_must_have_lamps)} cells must have lamps')
+            for cell in cells_that_must_have_lamps:
+                self.assign_lamp_value(*cell, True)
+            self.propagate_constraints()
         self.solved = False
         
     def __str__(self):
@@ -567,9 +568,11 @@ class AkariGenerator:
         
         return False
 
-    def check_unique_solution(self, akari: Akari, ):
+    def check_unique_solution(self, akari: Akari, find_solution_different_than:SolutionState|None=None) -> tuple[bool, SolutionState | None]:
         initial_state = SolutionState(akari)
         solution, solvable_depth = solve_basic(akari, max_depth=18)
+
+        solution = find_solution_different_than if find_solution_different_than else solution
         
         if not solution:
             return False, None

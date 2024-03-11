@@ -1,19 +1,24 @@
 import tkinter as tk
-import random, copy, time
+import random, copy, time, enum
 from tkinter import simpledialog
 from argparse import ArgumentParser
 
 from akari import Cell, Akari, SolutionState, solve, AkariGenerator
 
+class GuiMode(enum.Enum):
+    SOLVE = 1
+    CREATE = 2
+
 class AkariEditor:
     solution_state: SolutionState | None
     akari: Akari
+    mode: GuiMode
     
     def __init__(self, master, load_from_file=None):
         self.master = master
         self.highlighted_cell = None
         self.cell_size = 40  # Visual size of cells in pixels
-        self.solved = False
+        self.mode = GuiMode.CREATE
         
         self.akari = Akari(7, 7)
         
@@ -26,14 +31,20 @@ class AkariEditor:
         if load_from_file:
             self.load_from_file(load_from_file)
 
+    def mode_button_text(self):
+        return "In Create Mode" if self.mode == GuiMode.CREATE else "In Solve Mode"
+
     def create_widgets(self):
+        self.message = tk.Label(self.master, text="Welcome to Akari Editor!", font=('Arial', 20))
+        self.message.pack(side=tk.TOP, fill='none', expand=False, padx=20, pady=20, ipadx=0, ipady=0)
+
         self.frame = tk.Frame(self.master, bd=0, highlightbackground="black", highlightthickness=1)
         self.frame.pack(side=tk.TOP, fill='none', expand=False, padx=20, pady=20, ipadx=0, ipady=0)
 
         self.canvas = tk.Canvas(self.frame)
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True, anchor=tk.CENTER)
         
-        self.canvas.bind("<Button-1>", self.toggle_cell_color)
+        self.canvas.bind("<Button-1>", self.mouse_click)
 
         # First row of buttons
         self.button_frame1 = tk.Frame(self.master)
@@ -67,16 +78,22 @@ class AkariEditor:
 
         self.remove_solution_button = tk.Button(self.button_frame2, text="Remove Solution", command=self.remove_solution)
         self.remove_solution_button.pack(side=tk.LEFT)
+
+        self.remove_solution_button = tk.Button(self.button_frame2, text="Check if Solution works", command=self.check_if_solution_is_correct)
+        self.remove_solution_button.pack(side=tk.LEFT)
         
         # Third row of buttons
         self.button_frame3 = tk.Frame(self.master)
         self.button_frame3.pack(side=tk.TOP, fill=tk.X, padx=20, pady=(0, 10))
         
-        self.new_random_maze_button = tk.Button(self.button_frame3, text="Generate", command=self.new_akari)
-        self.new_random_maze_button.pack(side=tk.LEFT)
+        self.new_random_akari_button = tk.Button(self.button_frame3, text="Generate", command=self.new_akari)
+        self.new_random_akari_button.pack(side=tk.LEFT)
         
-        self.new_random_maze_button = tk.Button(self.button_frame3, text="Check Unique", command=self.check_unique_push)
-        self.new_random_maze_button.pack(side=tk.LEFT)
+        self.check_unique_button = tk.Button(self.button_frame3, text="Check Unique", command=self.check_unique_push)
+        self.check_unique_button.pack(side=tk.LEFT)
+        
+        self.toggle_gui_button = tk.Button(self.button_frame3, text=self.mode_button_text(), command=self.toggle_gui_mode)
+        self.toggle_gui_button.pack(side=tk.LEFT)
         
         self.save_to_file_button = tk.Button(self.button_frame3, text="Save to File", command=self.save_to_file_prompt)
         self.save_to_file_button.pack(side=tk.RIGHT)
@@ -92,6 +109,7 @@ class AkariEditor:
             self.master.bind(key, self.place_number_keypad)
 
     def reset_grid(self):
+        self.message.config(text="Welcome to Akari Editor!")
         self.solution_state = None
         self.akari.reset_cells()
         for cell in self.akari.cells.values():
@@ -137,7 +155,7 @@ class AkariEditor:
             width = 550
         else:
             width = canvas_width+40
-        self.master.geometry(f"{width}x{canvas_height+145}")
+        self.master.geometry(f"{width}x{canvas_height+225}")
 
     def draw_grid(self):
         for i in range(self.akari.grid_size_x):
@@ -145,6 +163,7 @@ class AkariEditor:
                 x1, y1 = i * self.cell_size, j * self.cell_size
                 self.draw_cell(i, j, x1, y1)
                 cell = self.akari.cells[(i, j)]
+        self.draw_solution()
                     
         if self.highlighted_cell and self.highlighted_cell.highlight_rect:
 
@@ -181,16 +200,58 @@ class AkariEditor:
             self.canvas.delete("all")
             self.resize_master()
             self.draw_grid()
-            
-    def toggle_cell_color(self, event):
+
+    def mouse_click(self, event):
         # i and j are coords for cell that was clicked
         i, j = (event.x // self.cell_size, event.y // self.cell_size)
-        cell = self.akari.cells[(i, j)]
+
+        if self.mode == GuiMode.CREATE:
+            self.toggle_cell_color(i, j)
+        else:
+            self.toggle_lamp_for_cell(i, j)
+            
+    def toggle_cell_color(self, x, y):
+        cell = self.akari.cells[(x, y)]
         cell.is_black = not cell.is_black
         if not cell.is_black:
             cell.number = None
             self.canvas.delete(f"{cell.coords()}-number")
         self.redraw_all()
+
+    def toggle_lamp_for_cell(self, x, y):
+        if not self.solution_state:
+            self.solution_state = SolutionState(self.akari, auto_find_cells_that_must_have_lamps=False)
+
+        cell = self.akari.cells[(x, y)]
+
+        if cell.is_black:
+            return
+        
+        if cell.coords() in self.solution_state.lamps:
+            self.solution_state.assign_lamp_value(*cell.coords(), not self.solution_state.lamps[cell.coords()])
+            if not self.solution_state.is_valid():
+                self.solution_state.assign_lamp_value(*cell.coords(), not self.solution_state.lamps[cell.coords()])
+                self.message.config(text="Invalid move! Try again.")
+            else:
+                self.message.config(text="")
+
+        self.redraw_all()
+
+    def check_if_solution_is_correct(self):
+        if self.solution_state:
+            if self.solution_state.is_solved():
+                self.message.config(text="Solution is correct!")
+            else:
+                self.message.config(text="Solution is incorrect. Try again.")
+        else:
+            self.message.config(text="No solution to check!")
+
+    def toggle_gui_mode(self):
+        if self.mode == GuiMode.CREATE:
+            self.mode = GuiMode.SOLVE
+        else:
+            self.mode = GuiMode.CREATE
+        self.toggle_gui_button.config(text=self.mode_button_text())
             
     def toggle_highlight(self, event):
         # i and j are coords for cell that was clicked
@@ -245,18 +306,25 @@ class AkariEditor:
             self.remove_solution()
         solution, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(self.akari)
         if solution:
-            print(f'solved in {depth} steps with {total_prop_iters} propogation iterations and {total_check_iters} forward check iterations and {backtracks} backtracks and {decision_points} decision points')
+            self.message.config(text=f'Solved.')
+            # print(f'solved in {depth} steps with {total_prop_iters} propogation iterations and {total_check_iters} forward check iterations and {backtracks} backtracks and {decision_points} decision points')
             self.solution_state = solution
-            self.draw_solution()
+            self.redraw_all()
         else:
-            print(f'failed to solve puzzle')
+            self.message.config(text="No solution found")
             
     def check_unique_push(self):
-        unique, solution = AkariGenerator().check_unique_solution(self.akari)
-        self.solution_state = solution
-        self.redraw_all()
-        self.draw_solution()
-        print(f'is solution unique: {unique}')
+        if self.solution_state and self.solution_state.is_solved():
+            unique, solution = AkariGenerator().check_unique_solution(self.akari, find_solution_different_than=self.solution_state)
+            if solution:
+                self.solution_state = solution
+                self.redraw_all()
+        else:
+            unique, solution = AkariGenerator().check_unique_solution(self.akari)
+        if unique:
+            self.message.config(text="This puzzle has a unique solution!")
+        else:
+            self.message.config(text="This puzzle does not have a unique solution.")
         
     def new_akari(self):
         self.remove_solution()
@@ -267,7 +335,6 @@ class AkariEditor:
             self.redraw_all()
             
     def draw_solution(self):
-        self.redraw_all()
         if not self.solution_state:
             return
         for lamp in self.solution_state.lamps:
@@ -280,6 +347,7 @@ class AkariEditor:
     def remove_solution(self):
         self.canvas.delete("solution_path")
         self.solution_state = None
+        self.message.config(text="Solution removed.")
         self.redraw_all()
     
 
