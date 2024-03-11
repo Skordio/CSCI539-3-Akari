@@ -184,23 +184,7 @@ class SolutionState:
                     the_rest.append(key)
         return unassigned_high_priority + the_rest
         
-        # Prioritize cells by constraint strength
-        cells_by_constraint = sorted(
-            self.akari.cells.values(), 
-            key=lambda cell: (-len(cell.adjacent_cells(white_only=True)), cell.x, cell.y)
-        )
-        
-        high_priority = []
-        for cell in cells_by_constraint:
-            if self.lamps[cell.coords()] is None and not cell.is_black:
-                adjacent_black_numbers = [self.akari.cells[coords].number for coords in cell.adjacent_cells() if self.akari.cells[coords].is_black and self.akari.cells[coords].number is not None]
-                if adjacent_black_numbers:
-                    high_priority.append(cell.coords())
-                else:
-                    break  # Stop after the most constrained cells
-        
-        return high_priority + [cell.coords() for cell in self.akari.cells.values() if self.lamps[cell.coords()] is None and not cell.is_black and cell.coords() not in high_priority]
-    
+            
     def assigned_lamps(self, only_true=True):
         return  [key for key in self.lamps if self.lamps[key] is not None and self.lamps[key] is True] if only_true \
                 else [key for key in self.lamps if self.lamps[key] is not None]
@@ -208,7 +192,10 @@ class SolutionState:
     def forward_check(self):
         # check if all unilluminated cells still could possibly be illuminated
         
+        iterations = 0
+        
         for cell in self.unilluminated_cells():
+            iterations += 1
             # if cell could contain a lamp, it could be valid
             if self.cell_can_contain_lamp(*cell.coords()):
                 continue
@@ -247,9 +234,9 @@ class SolutionState:
                         cell_can_be_illuminated = True
                         break
             if not cell_can_be_illuminated:
-                return False
+                return False, iterations
             
-        return True
+        return True, iterations
             
     def cell_can_contain_lamp(self, x:int, y:int):
         cell = self.akari.cells[(x, y)]
@@ -351,7 +338,9 @@ class SolutionState:
     
     def propagate_constraints(self):
         changes_made = True
+        iterations = 0
         while changes_made:
+            iterations += 1
             changes_made = False
             for cell in self.akari.cells.values():
                 if cell.is_black or self.lamps[cell.coords()] is not None:
@@ -362,14 +351,17 @@ class SolutionState:
                     self.assign_lamp_value(cell.x, cell.y, True)
                     if self.is_valid():
                         changes_made = True
+                        break
                     else:
                         self.assign_lamp_value(cell.x, cell.y, None)
                 elif cannot_have_lamp:
                     self.assign_lamp_value(*cell.coords(), False)
                     if self.is_valid():
                         changes_made = True
+                        break
                     else:
                         self.assign_lamp_value(cell.x, cell.y, None)
+        return iterations
 
     def check_cell_constraints(self, cell:Cell):
         cannot_have_lamp = not self.cell_can_contain_lamp(cell.x, cell.y)
@@ -413,32 +405,36 @@ class SolutionState:
         return False
     
     
-def solve(akari: Akari, state: SolutionState | None = None, depth:int = 0, max_depth:int|None = None) -> tuple[SolutionState | None, int]:
+def solve(akari: Akari, state: SolutionState | None = None, depth:int = 0, max_depth:int|None = None, total_prop_iters = 0, total_check_iters = 0) -> tuple[SolutionState | None, int, int, int]:
     depth += 1
-    if max_depth and depth > max_depth:
-        return None, depth
+    
     if not state:
         state = SolutionState(akari)
+        
     unassigned_lamps = state.unassigned_lamps()
+    
+    if max_depth and depth > max_depth:
+        return None, depth, total_prop_iters, total_check_iters
+    
     if len(unassigned_lamps) == 0 or state.solved:
-        return state, depth
+        return state, depth, total_prop_iters, total_check_iters
     else:
         for val in [True, False]:
             new_state = copy.deepcopy(state)
             new_state.assign_lamp_value(*unassigned_lamps[0], val)
             new_state.is_solved()
             if new_state.is_valid():
-                ok = new_state.forward_check()
+                ok, check_iters = new_state.forward_check()
                 if ok:
-                    new_state.propagate_constraints()
-                    new_state, new_depth = solve(akari, new_state, depth, max_depth)
+                    prop_iters = new_state.propagate_constraints()
+                    new_state, new_depth, new_prop_iters, new_check_iters = solve(akari, new_state, depth, max_depth, total_prop_iters=total_prop_iters + prop_iters, total_check_iters=total_check_iters + check_iters)
                     if new_state and new_state.solved:
-                        return new_state, new_depth
+                        return new_state, new_depth, new_prop_iters, new_check_iters
                     elif max_depth and new_depth > max_depth:
-                        return None, new_depth
+                        return None, new_depth, new_prop_iters, new_check_iters
                 else:
                     continue
-    return None, depth
+    return None, depth, total_prop_iters, total_check_iters
     
     
 def add_black_cells_and_clues(akari: Akari):
@@ -504,7 +500,7 @@ def lamps_must_intersect(akari: Akari):
     
 def check_unique_solution(akari: Akari, ):
     initial_state = SolutionState(akari)
-    solution, solvable_depth = solve(akari, max_depth=20)
+    solution, solvable_depth, max_prop_iters, max_check_iters = solve(akari, max_depth=18)
     
     if not solution:
         return False, None
@@ -514,7 +510,7 @@ def check_unique_solution(akari: Akari, ):
             test_state = copy.deepcopy(initial_state)
             test_state.assign_lamp_value(x, y, True)
             
-            test_state, depth = solve(akari, test_state, max_depth=solvable_depth)
+            test_state, depth, max_prop_iters, max_check_iters = solve(akari, test_state, max_depth=solvable_depth+2)
             if test_state and test_state.solved:
                 # If the puzzle can be solved with this change, it means there's at least a second solution
                 return False, test_state
@@ -524,7 +520,7 @@ def check_unique_solution(akari: Akari, ):
 
 def adjust_puzzle_for_single_solution(akari: Akari):
     attempts = 0
-    max_attempts = 100
+    max_attempts = (akari.grid_size_x * akari.grid_size_y) * 4
     
     unique, solution = check_unique_solution(akari)
 
@@ -571,23 +567,23 @@ def adjust_puzzle_for_single_solution(akari: Akari):
         attempts += 1
         unique, solution = check_unique_solution(akari)
         
-        if solution is None:
+        if unique and solution:
+            break
+        elif solution is None:
             akari = undo_state
             continue
 
-    if attempts >= max_attempts:
-        return False
-    else:
+    if unique and solution:
         return True
+    else: return False
 
 
 def generate_akari_puzzle(grid_size_x, grid_size_y):
-    good_puzzle = False
-    good_puzzle_attempts = 50
+    attempts = 0
     
-    while not good_puzzle and good_puzzle_attempts > 0:
-        print(f'outside loop iteration {51-good_puzzle_attempts}')
-        good_puzzle_attempts -= 1
+    while attempts < 50:
+        print(f'iteration {attempts}')
+        attempts += 1
     
         akari = Akari(grid_size_x, grid_size_y)
         add_black_cells_and_clues(akari)
@@ -596,20 +592,19 @@ def generate_akari_puzzle(grid_size_x, grid_size_y):
             akari = Akari(grid_size_x, grid_size_y)
             add_black_cells_and_clues(akari)
             
-        print('attempting to solve')
-        solution, depth = solve(akari, max_depth=20)
+        solution, depth, max_prop_iters, max_check_iters = solve(akari, max_depth=18)
         
         if not solution:
-            print('no solution found')
             continue
         else:
-            print(f'is solvable after {depth} iterations')
-            good_puzzle = adjust_puzzle_for_single_solution(akari,)
-    
-    if not good_puzzle:
-        print('puzzle not generated')
-        return None
-    else:
-        print('puzzle generated')
-        return akari
+            adjust_puzzle_for_single_solution(akari,)
+        
+        unique, solution = check_unique_solution(akari)
+        
+        if unique and solution:
+            print('puzzle generated')
+            return akari
+        
+    print('puzzle generation failed')
+    return None
     
