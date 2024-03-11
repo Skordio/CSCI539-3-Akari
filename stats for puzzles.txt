@@ -1,25 +1,74 @@
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_0486394
-4 cells must have lamps
-solved in 10 steps with 32 propogation iterations and 61 forward check iterations and 1 backtracks and 8 decision points
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_3369891
-0 cells must have lamps
-solved in 10 steps with 37 propogation iterations and 119 forward check iterations and 0 backtracks and 8 decision points
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_3770618
-3 cells must have lamps
-solved in 5 steps with 38 propogation iterations and 23 forward check iterations and 0 backtracks and 3 decision points
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\easy_light_up_7169120
-0 cells must have lamps
-solved in 12 steps with 40 propogation iterations and 163 forward check iterations and 1 backtracks and 10 decision points
+PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_0562806  
 
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\hard_light_up_0562806
-0 cells must have lamps
-solved in 10 steps with 41 propogation iterations and 113 forward check iterations and 0 backtracks and 8 decision points
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\hard_light_up_1614098
-0 cells must have lamps
-solved in 10 steps with 37 propogation iterations and 138 forward check iterations and 1 backtracks and 8 decision points
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\hard_light_up_4383497
-0 cells must have lamps
-solved in 11 steps with 1158 propogation iterations and 4614 forward check iterations and 74 backtracks and 237 decision points
-PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -f .\puzzles\hard_light_up_4848983
-2 cells must have lamps
-solved in 8 steps with 719293 propogation iterations and 1520415 forward check iterations and 82269 backtracks and 137537 decision points
+    solved:
+        depth: 10
+        total_prop_iters: 0
+        total_check_iters: 113
+        backtracks: 0
+        decision_points: 8
+
+PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_1614098
+
+    solved:
+        depth: 10
+        total_prop_iters: 0
+        total_check_iters: 138
+        backtracks: 1
+        decision_points: 8
+
+PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_4383497
+
+    solved:
+        depth: 20
+        total_prop_iters: 0
+        total_check_iters: 254
+        backtracks: 13
+        decision_points: 13
+
+PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_4848983
+
+    solved:
+        depth: 35
+        total_prop_iters: 0
+        total_check_iters: 267
+        backtracks: 38
+        decision_points: 19
+
+
+
+
+PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_0486394
+
+    solved:
+        depth: 10
+        total_prop_iters: 0
+        total_check_iters: 61
+        backtracks: 1
+        decision_points: 8
+
+PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_3369891
+
+    solved:
+        depth: 10
+        total_prop_iters: 0
+        total_check_iters: 119
+        backtracks: 0
+        decision_points: 8
+
+PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_3770618
+
+    solved:
+        depth: 4
+        total_prop_iters: 0
+        total_check_iters: 8
+        backtracks: 0
+        decision_points: 2
+
+PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_7169120
+
+    solved:
+        depth: 12
+        total_prop_iters: 0
+        total_check_iters: 163
+        backtracks: 1
+        decision_points: 10
