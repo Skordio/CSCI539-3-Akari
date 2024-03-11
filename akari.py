@@ -43,18 +43,14 @@ class Cell:
         final_neighbors: list[tuple[int, int]] = []
         
         for neighbor in neighbors:
-            if  neighbor in self.akari.cells.keys() and \
-                ((not white_only) or (white_only and not self.akari.cells[neighbor].is_black)) and \
-                ((not numbered_only) or (numbered_only and self.akari.cells[neighbor].number is not None)):
-                final_neighbors.append(neighbor)
+            if neighbor in self.akari.cells.keys():
+                white_satisfied = not white_only or (white_only and not self.akari.cells[neighbor].is_black)
+                numbered_satisfied = not numbered_only or (numbered_only and self.akari.cells[neighbor].number is not None)
+
+                if white_satisfied and numbered_satisfied:
+                    final_neighbors.append(neighbor)
                 
         return final_neighbors
-    
-    def adjacent_to_zero_cell(self):
-        for neighbor in self.adjacent_cells():
-            if self.akari.cells[neighbor].number == 0:
-                return True
-        return False
     
     def coords(self):
         return (self.x, self.y)
@@ -310,7 +306,7 @@ class SolutionState:
         self.lamps[(x, y)] = value
         if value is True:
             self.update_illuminated_cells_for_lamp(x, y)
-        elif value is False and old_value is True:
+        elif not value and old_value is True:
             self.update_illuminated_cells()
         
     def update_illuminated_cells(self):
@@ -421,7 +417,7 @@ class SolutionState:
         for lamp in self.assigned_lamps():
             if self.illuminated_cells[lamp]:
                 return False
-        return True if self.all_numbered_squares_valid() else False
+        return True
     
     def is_solved(self):
         if self.all_numbered_squares_satisfied() and self.all_cells_illuminated():
@@ -478,6 +474,7 @@ def solve(
                         decision_points = new_decision_points
                         total_check_iters = new_check_iters
                         total_prop_iters = new_prop_iters
+                        depth = new_depth
                 else:
                     backtracks += 1
             else: 
@@ -570,9 +567,11 @@ class AkariGenerator:
 
     def check_unique_solution(self, akari: Akari, find_solution_different_than:SolutionState|None=None) -> tuple[bool, SolutionState | None]:
         initial_state = SolutionState(akari)
-        solution, solvable_depth = solve_basic(akari, max_depth=18)
-
-        solution = find_solution_different_than if find_solution_different_than else solution
+        if not find_solution_different_than:
+            solution, solvable_depth = solve_basic(akari, max_depth=40)
+        else:
+            solution = find_solution_different_than
+            solvable_depth = 40
         
         if not solution:
             return False, None
@@ -582,7 +581,7 @@ class AkariGenerator:
                 test_state = copy.deepcopy(initial_state)
                 test_state.assign_lamp_value(x, y, True)
                 
-                test_state, depth = solve_basic(akari, test_state, max_depth=solvable_depth+2)
+                test_state, depth = solve_basic(akari, test_state, max_depth=(solvable_depth+2) if solvable_depth else None)
                 if test_state and test_state.solved:
                     # If the puzzle can be solved with this change, it means there's at least a second solution
                     return False, test_state
@@ -664,7 +663,7 @@ class AkariGenerator:
                 akari = Akari(grid_size_x, grid_size_y)
                 self.add_black_cells_and_clues(akari)
                 
-            solution, depth = solve_basic(akari, max_depth=18)
+            solution, depth = solve_basic(akari, max_depth=40)
             
             if not solution:
                 continue
@@ -675,13 +674,13 @@ class AkariGenerator:
             
             if unique and solution:
                 solution, depth, total_prop_iters, total_check_iters, backtracks, decision_points = solve(akari)
-                if difficulty == 1 and ((backtracks <= 4) or (total_check_iters <= 30)):
+                if difficulty == 1 and ((backtracks <= 5) or (depth <= 10) or (decision_points <= 10)):
                         print('puzzle generated successfully')
                         return akari
-                elif difficulty == 2 and ((backtracks <= 8 and backtracks > 4) or (total_check_iters <= 60 and total_check_iters > 30)):
+                elif difficulty == 2 and ((backtracks <= 8 and backtracks > 5) or (depth <= 15 and depth > 10) or (decision_points <= 15 and decision_points > 10)):
                         print('puzzle generated successfully')
                         return akari
-                elif difficulty == 3 and ((backtracks > 8) or (total_check_iters > 60)):
+                elif difficulty == 3 and ((backtracks > 8) or (depth > 15) or (decision_points > 15)):
                         print('puzzle generated successfully')
                         return akari
         
