@@ -5,9 +5,11 @@ from argparse import ArgumentParser
 
 from akari import Cell, Akari, SolutionState, solve, AkariGenerator
 
+
 class GuiMode(enum.Enum):
     SOLVE = 1
     CREATE = 2
+
 
 class AkariEditor:
     solution_state: SolutionState | None
@@ -399,6 +401,7 @@ parser.add_argument('-f','--filename', required=False, help='The filename of the
 parser.add_argument('-s','--size', required=False, help='The cell size to use (default is 40, range is 20-60)') 
 args = parser.parse_args()
 
+
 def main():
     root = tk.Tk()
     root.title("Akari Editor")
@@ -406,6 +409,7 @@ def main():
     cell_size = int(args.size) if args.size else 40
     app = AkariEditor(root, load_from_file=file, cell_size=cell_size)
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()

@@ -502,6 +502,7 @@ def solve(
                 backtracks += 1
     return None, depth, total_prop_iters, total_check_iters, backtracks, decision_points
     
+    
 def solve_basic(akari: Akari, state: SolutionState | None = None, depth:int = 0, max_depth:int|None = None) -> tuple[SolutionState | None, int]:
     depth += 1
     
@@ -532,6 +533,7 @@ def solve_basic(akari: Akari, state: SolutionState | None = None, depth:int = 0,
                     else:
                         depth = new_depth
     return None, depth
+    
     
 class AkariGenerator:
     def add_black_cells_and_clues(self, akari: Akari):
@@ -590,10 +592,10 @@ class AkariGenerator:
     def check_unique_solution(self, akari: Akari, find_solution_different_than:SolutionState|None=None) -> tuple[bool, SolutionState | None]:
         initial_state = SolutionState(akari)
         if not find_solution_different_than:
-            solution, solvable_depth = solve_basic(akari, max_depth=40)
+            solution, solvable_depth = solve_basic(akari, max_depth=self.max_depth(akari))
         else:
             solution = find_solution_different_than
-            solvable_depth = 40
+            solvable_depth = self.max_depth(akari)
         
         if not solution:
             return False, None
@@ -609,10 +611,13 @@ class AkariGenerator:
                     return False, test_state
 
         return True, solution
+    
+    def max_depth(self, akari: Akari):
+        return int((akari.grid_size_x * akari.grid_size_y) / 2.5)
 
     def adjust_puzzle_for_single_solution(self, akari: Akari):
         attempts = 0
-        max_attempts = 50 
+        max_attempts = akari.grid_size_x * akari.grid_size_y
 
         # Function to revert changes
         def revert_changes(changes):
@@ -685,7 +690,7 @@ class AkariGenerator:
                 akari = Akari(grid_size_x, grid_size_y)
                 self.add_black_cells_and_clues(akari)
                 
-            solution, depth = solve_basic(akari, max_depth=40)
+            solution, depth = solve_basic(akari, max_depth=self.max_depth(akari))
             
             if not solution:
                 continue
