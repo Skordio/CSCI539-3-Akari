@@ -240,13 +240,15 @@ class AkariEditor:
         if cell.is_black:
             return
         
-        if cell.coords() in self.solution_state.lamps:
+        if cell.coords() in self.solution_state.lamps.keys():
             self.solution_state.assign_lamp_value(*cell.coords(), not self.solution_state.lamps[cell.coords()])
             if not self.solution_state.is_valid():
                 self.solution_state.assign_lamp_value(*cell.coords(), not self.solution_state.lamps[cell.coords()])
                 self.message.config(text="Invalid move! Try again.")
             else:
                 self.message.config(text="")
+                if self.solution_state.is_solved():
+                    self.message.config(text="Solution is correct!")
 
         self.redraw_all()
 
@@ -325,6 +327,7 @@ class AkariEditor:
             # print(f'solved: in {depth} steps with {total_prop_iters} propogation iterations and {total_check_iters} forward check iterations and {backtracks} backtracks and {decision_points} decision points')
             print(f"""
     solved:
+        inital_prop_iters: {solution.initial_propogation_iterations}
         depth: {depth}
         total_prop_iters: {total_prop_iters}
         total_check_iters: {total_check_iters}
@@ -334,7 +337,7 @@ class AkariEditor:
             self.solution_state = solution
             self.redraw_all()
         else:
-            self.message.config(text="No solution found")
+            self.message.config(text="No solution found.")
             
     def check_unique_push(self):
         if self.solution_state and self.solution_state.is_solved():
@@ -353,7 +356,9 @@ class AkariEditor:
             self.message.config(text="No solution found.")
         
     def new_akari(self):
+        self.akari = Akari(self.akari.grid_size_x, self.akari.grid_size_y)
         self.remove_solution()
+        self.redraw_all()
         self.message.config(text="Generating...")
         difficulty = simpledialog.askinteger("Input", "Enter difficulty (1-3):", parent=self.master, minvalue=1, maxvalue=3)
         if difficulty:
@@ -383,7 +388,7 @@ class AkariEditor:
     def remove_solution(self):
         self.canvas.delete("solution_path")
         self.solution_state = None
-        self.message.config(text="Solution removed.")
+        self.message.config(text="")
         self.redraw_all()
     
 

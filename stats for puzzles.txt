@@ -1,74 +1,123 @@
-PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_0562806  
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_0486394
 
     solved:
-        depth: 10
+        inital_prop_iters: 7
+        depth: 8
         total_prop_iters: 0
-        total_check_iters: 113
-        backtracks: 0
-        decision_points: 8
-
-PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_1614098
-
-    solved:
-        depth: 10
-        total_prop_iters: 0
-        total_check_iters: 138
+        total_check_iters: 28
         backtracks: 1
-        decision_points: 8
+        decision_points: 6
 
-PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_4383497
-
-    solved:
-        depth: 20
-        total_prop_iters: 0
-        total_check_iters: 254
-        backtracks: 13
-        decision_points: 13
-
-PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_4848983
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_3369891
 
     solved:
-        depth: 35
-        total_prop_iters: 0
-        total_check_iters: 267
-        backtracks: 38
-        decision_points: 19
-
-
-
-
-PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_0486394
-
-    solved:
-        depth: 10
-        total_prop_iters: 0
-        total_check_iters: 61
-        backtracks: 1
-        decision_points: 8
-
-PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_3369891
-
-    solved:
-        depth: 10
-        total_prop_iters: 0
-        total_check_iters: 119
+        inital_prop_iters: 0
+        depth: 8
+        total_prop_iters: 3
+        total_check_iters: 101
         backtracks: 0
-        decision_points: 8
+        decision_points: 6
 
-PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_3770618
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_3770618
 
     solved:
+        inital_prop_iters: 4
         depth: 4
         total_prop_iters: 0
         total_check_iters: 8
         backtracks: 0
         decision_points: 2
 
-PS C:\Users\skord\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_7169120
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\easy_light_up_7169120
 
     solved:
+        inital_prop_iters: 0
         depth: 12
         total_prop_iters: 0
         total_check_iters: 163
         backtracks: 1
         decision_points: 10
+
+----------------------------------------------------------------------------------------------
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\normal_light_up_0394015
+
+    solved:
+        inital_prop_iters: 5
+        depth: 7
+        total_prop_iters: 0
+        total_check_iters: 27
+        backtracks: 3
+        decision_points: 5
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\normal_light_up_4088824
+
+    solved:
+        inital_prop_iters: 6
+        depth: 3
+        total_prop_iters: 3
+        total_check_iters: 17
+        backtracks: 0
+        decision_points: 2
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\normal_light_up_5090719
+
+    solved:
+        inital_prop_iters: 4
+        depth: 72
+        total_prop_iters: 0
+        total_check_iters: 588
+        backtracks: 96
+        decision_points: 38
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\normal_light_up_9270718
+
+    solved:
+        inital_prop_iters: 6
+        depth: 9
+        total_prop_iters: 0
+        total_check_iters: 49
+        backtracks: 3
+        decision_points: 7
+
+----------------------------------------------------------------------------------------------
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_0562806
+
+    solved:
+        inital_prop_iters: 0
+        depth: 7
+        total_prop_iters: 3
+        total_check_iters: 95
+        backtracks: 0
+        decision_points: 5
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_1614098
+
+    solved:
+        inital_prop_iters: 0
+        depth: 10
+        total_prop_iters: 1
+        total_check_iters: 138
+        backtracks: 1
+        decision_points: 8
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_4383497
+
+    solved:
+        inital_prop_iters: 0
+        depth: 13
+        total_prop_iters: 1
+        total_check_iters: 175
+        backtracks: 5
+        decision_points: 9
+
+PS S:\Github\CSCI539-3-Akari> py .\guiAkariCreator.py -s 60 -f .\puzzles\hard_light_up_4848983
+
+    solved:
+        inital_prop_iters: 2
+        depth: 25
+        total_prop_iters: 8
+        total_check_iters: 230
+        backtracks: 30
+        decision_points: 18
